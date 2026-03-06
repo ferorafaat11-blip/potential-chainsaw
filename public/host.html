@@ -14,52 +14,83 @@
       align-items:center; justify-content:center; padding:20px;
     }
     h1 { color:#00f5ff; font-size:1.8rem; margin-bottom:10px; }
-    .sub { color:#4a5568; margin-bottom:50px; font-size:0.9rem; }
+    .sub { color:#4a5568; margin-bottom:30px; font-size:0.9rem; }
     .btn {
-      width:200px; padding:18px;
-      border-radius:16px; border:none;
-      font-size:1.2rem; font-weight:900;
-      cursor:pointer; margin:10px;
-      transition:all 0.2s;
+      width:200px; padding:18px; border-radius:16px; border:none;
+      font-size:1.2rem; font-weight:900; cursor:pointer; margin:10px;
     }
     .play { background:#00f5ff; color:#000; }
     .pause { background:#ff006e; color:#fff; }
-    .play:hover { box-shadow:0 0 30px rgba(0,245,255,0.5); }
-    .pause:hover { box-shadow:0 0 30px rgba(255,0,110,0.5); }
+    .upload-box {
+      background:#0d1117; border:2px dashed #00f5ff44;
+      border-radius:16px; padding:25px; text-align:center;
+      margin-bottom:30px; width:100%; max-width:400px;
+    }
+    input[type=file] { display:none; }
+    .upload-btn {
+      padding:12px 28px; background:#7b2fff; color:#fff;
+      border:none; border-radius:10px; cursor:pointer;
+      font-size:1rem; font-weight:700; margin-top:10px;
+    }
+    #progress { color:#00f5ff; margin-top:10px; font-size:0.9rem; }
     #statusBox {
-      margin-top:30px; padding:15px 30px;
+      margin-top:20px; padding:15px 30px;
       background:#0d1117; border:1px solid #00f5ff33;
       border-radius:12px; color:#4a5568; font-size:0.9rem;
-    }
-    .dot {
-      display:inline-block; width:10px; height:10px;
-      border-radius:50%; background:#22c55e; margin-left:8px;
     }
   </style>
 </head>
 <body>
   <h1>🎮 لوحة التحكم</h1>
-  <p class="sub">بتتحكم في كل الأجهزة من هنا</p>
+  <p class="sub">ارفع الفيديو وتحكم في الكل</p>
+
+  <div class="upload-box">
+    <div>🎬 ارفع الفيديو هنا</div>
+    <input type="file" id="fileInput" accept="video/*">
+    <br>
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">اختار الفيديو</button>
+    <button class="upload-btn" onclick="uploadVideo()" style="background:#00f5ff;color:#000;margin-right:10px">رفع ⬆</button>
+    <div id="progress"></div>
+  </div>
 
   <button class="btn play" onclick="sendPlay()">▶ شغّل الكل</button>
   <button class="btn pause" onclick="sendPause()">⏸ وقّف الكل</button>
 
-  <div id="statusBox">
-    <span class="dot"></span> متصل بالسيرفر
-  </div>
+  <div id="statusBox">متصل بالسيرفر ✓</div>
 
   <script>
     const socket = io();
 
+    function uploadVideo() {
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) return alert('اختار فيديو الأول!');
+      const formData = new FormData();
+      formData.append('video', file);
+      document.getElementById('progress').textContent = 'جاري الرفع...';
+      fetch('/upload', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(() => {
+          document.getElementById('progress').textContent = '✅ تم الرفع!';
+          socket.emit('videoReady');
+        });
+    }
+
     function sendPlay() {
       socket.emit('play');
-      document.getElementById('statusBox').innerHTML = '<span class="dot"></span> تم إرسال أمر التشغيل ▶';
+      document.getElementById('statusBox').textContent = '▶ تم إرسال أمر التشغيل';
     }
 
     function sendPause() {
       socket.emit('pause');
-      document.getElementById('statusBox').innerHTML = '<span class="dot" style="background:#ff006e"></span> تم إرسال أمر الإيقاف ⏸';
+      document.getElementById('statusBox').textContent = '⏸ تم إرسال أمر الإيقاف';
     }
   </script>
 </body>
 </html>
+```
+
+---
+
+وبدّل `src` في `public/index.html` من Google Drive لـ:
+```
+src="/videos/video.mp4"
