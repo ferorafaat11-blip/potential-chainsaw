@@ -64,19 +64,26 @@
     <video id="video360"  crossorigin="anonymous" loop playsinline webkit-playsinline></video>
     <video id="videoFlat" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
   </a-assets>
+
+  <!-- rig = المحور اللي بنحرك عليه الاتجاه الابتدائي -->
+  <a-entity id="rig" rotation="0 0 0" position="0 0 0">
+    <!-- الكاميرا جوا الـ rig — look-controls بيشتغل عليها عادي -->
+    <a-camera id="mainCamera" look-controls="reverseMouseDrag:false" wasd-controls="enabled:false">
+      <a-cursor color="#00f5ff"></a-cursor>
+    </a-camera>
+  </a-entity>
+
   <a-videosphere id="videoSphere" src="#video360"  rotation="0 180 0" visible="false"></a-videosphere>
   <a-video       id="videoPanel"  src="#videoFlat" width="6" height="3.4" position="0 1.6 -4" visible="false"></a-video>
   <a-sky         id="imageSky"    src="" visible="false" radius="100"></a-sky>
   <a-image       id="imagePanel"  src="" width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
-  <a-camera id="mainCamera" look-controls wasd-controls="enabled:false">
-    <a-cursor color="#00f5ff"></a-cursor>
-  </a-camera>
 </a-scene>
 
 <script>
   const video360  = document.getElementById('video360');
   const videoFlat = document.getElementById('videoFlat');
   const scene       = document.getElementById('scene');
+  const rig         = document.getElementById('rig');
   const videoSphere = document.getElementById('videoSphere');
   const videoPanel  = document.getElementById('videoPanel');
   const imageSky    = document.getElementById('imageSky');
@@ -100,23 +107,23 @@
     if (pendingData) applyState(pendingData);
   }
 
+  // الحل الصح: نحرك الـ rig مش الكاميرا
+  // الـ gyroscope بيشتغل على الكاميرا — والـ rig بيضيف rotation إضافي فوقيه
   function setCameraYaw(degree) {
-    const camera = document.getElementById('mainCamera');
-    if (camera) camera.setAttribute('rotation', { x:0, y:-degree, z:0 });
+    // A-Frame Y rotation: موجب = يسار، سالب = يمين
+    // عشان 90° = شرق نضرب في -1
+    rig.setAttribute('rotation', { x: 0, y: -degree, z: 0 });
   }
 
   function applyVolume(video, volume, muted) {
     video.volume = Math.max(0, Math.min(1, volume ?? 1));
     video.muted  = muted ?? false;
-    // بعت المدة للـ host
-    if (video.duration && !isNaN(video.duration)) {
-      socket.emit('reportDuration', { duration: video.duration });
-    }
     video.addEventListener('loadedmetadata', () => {
-      if (video.duration && !isNaN(video.duration)) {
+      if (video.duration && !isNaN(video.duration))
         socket.emit('reportDuration', { duration: video.duration });
-      }
     }, { once: true });
+    if (video.duration && !isNaN(video.duration))
+      socket.emit('reportDuration', { duration: video.duration });
   }
 
   function hideAll() {
@@ -130,16 +137,16 @@
   function applyState(data) {
     hideAll();
     const degree = data.degree || 0;
+    setCameraYaw(degree);
 
     if (data.type === 'video') {
       if (video360.src !== data.url) { video360.src = data.url; video360.load(); }
       videoSphere.setAttribute('visible', true);
-      setCameraYaw(degree);
       applyVolume(video360, data.volume, data.muted);
       if (data.playing && data.startedAt) {
         const elapsed = (Date.now() - data.startedAt) / 1000;
         video360.currentTime = Math.max(0, elapsed);
-        video360.play().catch(() => { video360.muted=true; video360.play(); });
+        video360.play().catch(() => { video360.muted = true; video360.play(); });
       } else {
         if (data.pausedAt) video360.currentTime = data.pausedAt;
         video360.pause();
@@ -148,23 +155,23 @@
     } else if (data.type === 'videoFlat') {
       if (videoFlat.src !== data.url) { videoFlat.src = data.url; videoFlat.load(); }
       videoPanel.setAttribute('visible', true);
-      setCameraYaw(degree);
       applyVolume(videoFlat, data.volume, data.muted);
       if (data.playing && data.startedAt) {
         const elapsed = (Date.now() - data.startedAt) / 1000;
         videoFlat.currentTime = Math.max(0, elapsed);
-        videoFlat.play().catch(() => { videoFlat.muted=true; videoFlat.play(); });
+        videoFlat.play().catch(() => { videoFlat.muted = true; videoFlat.play(); });
       } else {
         if (data.pausedAt) videoFlat.currentTime = data.pausedAt;
         videoFlat.pause();
       }
 
     } else if (data.type === 'image360') {
-      imageSky.setAttribute('src', data.url); imageSky.setAttribute('visible', true);
-      setCameraYaw(degree);
+      imageSky.setAttribute('src', data.url);
+      imageSky.setAttribute('visible', true);
+
     } else if (data.type === 'image') {
-      imagePanel.setAttribute('src', data.url); imagePanel.setAttribute('visible', true);
-      setCameraYaw(degree);
+      imagePanel.setAttribute('src', data.url);
+      imagePanel.setAttribute('visible', true);
     }
   }
 
@@ -180,7 +187,6 @@
     }
   }
 
-  // تحكم الصوت مباشر بدون إعادة تحميل
   socket.on('setVolume', (data) => {
     [video360, videoFlat].forEach(v => {
       v.volume = Math.max(0, Math.min(1, data.volume ?? 1));
