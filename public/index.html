@@ -27,20 +27,15 @@
       z-index:9998; gap:20px;
     }
     .mode-title { color:#fff; font-size:1.3rem; font-weight:700; margin-bottom:10px; }
-    .mode-btn {
-      width:260px; padding:18px; border:none; border-radius:16px;
-      font-size:1.1rem; font-weight:900; cursor:pointer;
-      display:flex; flex-direction:column; align-items:center; gap:4px;
-    }
+    .mode-btn { width:260px; padding:18px; border:none; border-radius:16px; font-size:1.1rem; font-weight:900; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; }
     .mode-normal { background:#fff; color:#000; }
     .mode-vr { background:#00f5ff; color:#000; }
     .mode-desc { font-size:0.75rem; font-weight:400; opacity:0.6; }
     #switchBtn {
       display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
-      z-index:9997; padding:10px 22px; background:rgba(0,0,0,0.6);
-      color:#fff; border:1px solid rgba(255,255,255,0.3);
-      font-size:0.85rem; font-weight:700; border-radius:50px; cursor:pointer;
-      backdrop-filter:blur(10px);
+      z-index:9997; padding:10px 22px; background:rgba(0,0,0,0.6); color:#fff;
+      border:1px solid rgba(255,255,255,0.3); font-size:0.85rem; font-weight:700;
+      border-radius:50px; cursor:pointer; backdrop-filter:blur(10px);
     }
     a-scene { width:100vw; height:100vh; }
   </style>
@@ -55,14 +50,8 @@
 
 <div id="modeScreen">
   <div class="mode-title">اختار وضع العرض</div>
-  <button class="mode-btn mode-normal" onclick="startMode('normal')">
-    📱 وضع عادي
-    <span class="mode-desc">شاشة واحدة</span>
-  </button>
-  <button class="mode-btn mode-vr" onclick="startMode('vr')">
-    🥽 وضع VR
-    <span class="mode-desc">شاشتين للنظارة</span>
-  </button>
+  <button class="mode-btn mode-normal" onclick="startMode('normal')">📱 وضع عادي<span class="mode-desc">شاشة واحدة</span></button>
+  <button class="mode-btn mode-vr" onclick="startMode('vr')">🥽 وضع VR<span class="mode-desc">شاشتين للنظارة</span></button>
 </div>
 
 <button id="switchBtn" onclick="showModeScreen()">🔄 غيّر الوضع</button>
@@ -72,40 +61,29 @@
   device-orientation-permission-ui="enabled:true"
   style="display:none">
   <a-assets>
-    <video id="video360" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
+    <video id="video360"  crossorigin="anonymous" loop playsinline webkit-playsinline></video>
     <video id="videoFlat" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
   </a-assets>
-
-  <!-- فيديو 360 -->
-  <a-videosphere id="videoSphere" src="#video360" rotation="0 180 0" visible="false"></a-videosphere>
-
-  <!-- فيديو عادي — لوحة كبيرة في المنتصف -->
-  <a-video id="videoPanel" src="#videoFlat" width="6" height="3.4" position="0 1.6 -4" visible="false"></a-video>
-
-  <!-- صورة 360 -->
-  <a-sky id="imageSky" src="" visible="false" radius="100"></a-sky>
-
-  <!-- صورة عادية — لوحة -->
-  <a-image id="imagePanel" src="" width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
-
-  <a-camera look-controls wasd-controls="enabled:false">
+  <a-videosphere id="videoSphere" src="#video360"  rotation="0 180 0" visible="false"></a-videosphere>
+  <a-video       id="videoPanel"  src="#videoFlat" width="6" height="3.4" position="0 1.6 -4" visible="false"></a-video>
+  <a-sky         id="imageSky"    src="" visible="false" radius="100"></a-sky>
+  <a-image       id="imagePanel"  src="" width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
+  <a-camera id="mainCamera" look-controls wasd-controls="enabled:false">
     <a-cursor color="#00f5ff"></a-cursor>
   </a-camera>
 </a-scene>
 
 <script>
-  const video360 = document.getElementById('video360');
+  const video360  = document.getElementById('video360');
   const videoFlat = document.getElementById('videoFlat');
-  const scene = document.getElementById('scene');
+  const scene       = document.getElementById('scene');
   const videoSphere = document.getElementById('videoSphere');
-  const videoPanel = document.getElementById('videoPanel');
-  const imageSky = document.getElementById('imageSky');
-  const imagePanel = document.getElementById('imagePanel');
+  const videoPanel  = document.getElementById('videoPanel');
+  const imageSky    = document.getElementById('imageSky');
+  const imagePanel  = document.getElementById('imagePanel');
   const socket = io();
 
-  let sceneStarted = false;
-  let pendingData = null;
-  let currentMode = null;
+  let sceneStarted = false, pendingData = null, currentMode = null;
 
   function showModeScreen() {
     scene.style.display = 'none';
@@ -122,51 +100,71 @@
     if (pendingData) applyState(pendingData);
   }
 
+  function setCameraYaw(degree) {
+    const camera = document.getElementById('mainCamera');
+    if (camera) camera.setAttribute('rotation', { x:0, y:-degree, z:0 });
+  }
+
+  function applyVolume(video, volume, muted) {
+    video.volume = Math.max(0, Math.min(1, volume ?? 1));
+    video.muted  = muted ?? false;
+    // بعت المدة للـ host
+    if (video.duration && !isNaN(video.duration)) {
+      socket.emit('reportDuration', { duration: video.duration });
+    }
+    video.addEventListener('loadedmetadata', () => {
+      if (video.duration && !isNaN(video.duration)) {
+        socket.emit('reportDuration', { duration: video.duration });
+      }
+    }, { once: true });
+  }
+
   function hideAll() {
     videoSphere.setAttribute('visible', false);
     videoPanel.setAttribute('visible', false);
     imageSky.setAttribute('visible', false);
     imagePanel.setAttribute('visible', false);
-    video360.pause();
-    videoFlat.pause();
+    video360.pause(); videoFlat.pause();
   }
 
   function applyState(data) {
     hideAll();
+    const degree = data.degree || 0;
 
     if (data.type === 'video') {
-      // فيديو 360
       if (video360.src !== data.url) { video360.src = data.url; video360.load(); }
       videoSphere.setAttribute('visible', true);
+      setCameraYaw(degree);
+      applyVolume(video360, data.volume, data.muted);
       if (data.playing && data.startedAt) {
         const elapsed = (Date.now() - data.startedAt) / 1000;
         video360.currentTime = Math.max(0, elapsed);
-        video360.play().catch(() => { video360.muted = true; video360.play(); });
+        video360.play().catch(() => { video360.muted=true; video360.play(); });
       } else {
         if (data.pausedAt) video360.currentTime = data.pausedAt;
         video360.pause();
       }
 
     } else if (data.type === 'videoFlat') {
-      // فيديو عادي — لوحة كبيرة
       if (videoFlat.src !== data.url) { videoFlat.src = data.url; videoFlat.load(); }
       videoPanel.setAttribute('visible', true);
+      setCameraYaw(degree);
+      applyVolume(videoFlat, data.volume, data.muted);
       if (data.playing && data.startedAt) {
         const elapsed = (Date.now() - data.startedAt) / 1000;
         videoFlat.currentTime = Math.max(0, elapsed);
-        videoFlat.play().catch(() => { videoFlat.muted = true; videoFlat.play(); });
+        videoFlat.play().catch(() => { videoFlat.muted=true; videoFlat.play(); });
       } else {
         if (data.pausedAt) videoFlat.currentTime = data.pausedAt;
         videoFlat.pause();
       }
 
     } else if (data.type === 'image360') {
-      imageSky.setAttribute('src', data.url);
-      imageSky.setAttribute('visible', true);
-
+      imageSky.setAttribute('src', data.url); imageSky.setAttribute('visible', true);
+      setCameraYaw(degree);
     } else if (data.type === 'image') {
-      imagePanel.setAttribute('src', data.url);
-      imagePanel.setAttribute('visible', true);
+      imagePanel.setAttribute('src', data.url); imagePanel.setAttribute('visible', true);
+      setCameraYaw(degree);
     }
   }
 
@@ -182,9 +180,17 @@
     }
   }
 
+  // تحكم الصوت مباشر بدون إعادة تحميل
+  socket.on('setVolume', (data) => {
+    [video360, videoFlat].forEach(v => {
+      v.volume = Math.max(0, Math.min(1, data.volume ?? 1));
+      v.muted  = data.muted ?? false;
+    });
+  });
+
   scene.addEventListener('exit-vr', () => { currentMode = 'normal'; });
   socket.on('state', handleState);
-  socket.on('sync', handleState);
+  socket.on('sync',  handleState);
 </script>
 </body>
 </html>
