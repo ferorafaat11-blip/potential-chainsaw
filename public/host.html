@@ -32,13 +32,11 @@
 
     .section-title { color:#4a5568; font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px; width:100%; max-width:500px; }
 
-    /* MEDIA LIST */
     .media-list { width:100%; max-width:500px; margin-bottom:15px; }
     .media-item {
       display:flex; align-items:center; gap:10px;
       background:#0d1117; border:1px solid rgba(255,255,255,0.07);
-      border-radius:12px; padding:12px 15px; margin-bottom:8px;
-      transition:all 0.2s;
+      border-radius:12px; padding:12px 15px; margin-bottom:8px; transition:all 0.2s;
     }
     .media-item.active { border-color:#00f5ff; background:rgba(0,245,255,0.06); }
     .media-icon { font-size:1.4rem; flex-shrink:0; }
@@ -49,26 +47,23 @@
     .show-btn { padding:6px 12px; background:#00f5ff; color:#000; border:none; border-radius:8px; font-size:0.8rem; font-weight:700; cursor:pointer; }
     .del-btn { padding:6px 10px; background:rgba(255,0,110,0.15); color:#ff006e; border:1px solid rgba(255,0,110,0.3); border-radius:8px; font-size:0.8rem; cursor:pointer; }
     .del-btn:hover { background:rgba(255,0,110,0.3); }
-
     .empty-msg { color:#4a5568; font-size:0.85rem; text-align:center; padding:20px; }
 
-    /* ADD FORM */
     .add-box { width:100%; max-width:500px; background:#0d1117; border:1px dashed rgba(0,245,255,0.2); border-radius:12px; padding:18px; margin-bottom:20px; }
     .add-label { color:#4a5568; font-size:0.8rem; margin-bottom:12px; }
-    .add-box input, .add-box select {
+    .add-box input {
       width:100%; padding:10px 14px;
       background:rgba(255,255,255,0.05); border:1px solid rgba(0,245,255,0.2);
-      border-radius:8px; color:#fff; font-size:0.9rem; margin-bottom:8px;
+      border-radius:8px; color:#fff; font-size:0.9rem; margin-bottom:8px; direction:ltr;
     }
-    .add-box input { direction:ltr; }
+    .add-box input[style*="rtl"] { direction:rtl; }
     .add-box input::placeholder { color:#4a5568; }
-    .add-box input:focus, .add-box select:focus { outline:none; border-color:#00f5ff; }
-    .add-box select option { background:#0d1117; }
-    .type-row { display:flex; gap:8px; margin-bottom:8px; }
-    .type-btn { flex:1; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#4a5568; font-size:0.8rem; cursor:pointer; transition:all 0.2s; }
+    .add-box input:focus { outline:none; border-color:#00f5ff; }
+    .type-row { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+    .type-btn { flex:1; min-width:100px; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#4a5568; font-size:0.78rem; cursor:pointer; transition:all 0.2s; text-align:center; }
     .type-btn.selected { border-color:#00f5ff; color:#00f5ff; background:rgba(0,245,255,0.08); }
     .add-row { display:flex; gap:8px; }
-    .name-input { flex:1; }
+    .add-row input { flex:1; margin-bottom:0; }
     .add-btn { padding:10px 18px; background:#7b2fff; color:#fff; border:none; border-radius:8px; font-size:0.9rem; font-weight:700; cursor:pointer; white-space:nowrap; }
 
     #statusBox { padding:12px 25px; background:#0d1117; border:1px solid rgba(0,245,255,0.15); border-radius:12px; color:#4a5568; font-size:0.85rem; text-align:center; width:100%; max-width:500px; margin-bottom:20px; }
@@ -107,11 +102,12 @@
   <div class="add-box">
     <div class="add-label">➕ إضافة محتوى جديد</div>
     <div class="type-row">
-      <button class="type-btn selected" id="typeVideo" onclick="selectType('video')">🎬 فيديو 360°</button>
-      <button class="type-btn" id="typeImage" onclick="selectType('image')">🖼️ صورة عادية</button>
-      <button class="type-btn" id="typeImage360" onclick="selectType('image360')">🌐 صورة 360°</button>
+      <button class="type-btn selected" id="t_video" onclick="selectType('video')">🌐 فيديو 360°</button>
+      <button class="type-btn" id="t_videoFlat" onclick="selectType('videoFlat')">🎬 فيديو عادي</button>
+      <button class="type-btn" id="t_image" onclick="selectType('image')">🖼️ صورة عادية</button>
+      <button class="type-btn" id="t_image360" onclick="selectType('image360')">🌐 صورة 360°</button>
     </div>
-    <input type="text" id="mediaName" placeholder="اسم المحتوى" class="name-input" style="direction:rtl" />
+    <input type="text" id="mediaName" placeholder="اسم المحتوى" style="direction:rtl" />
     <div class="add-row">
       <input type="text" id="mediaUrl" placeholder="https://res.cloudinary.com/..." />
       <button class="add-btn" onclick="addMedia()">إضافة</button>
@@ -129,58 +125,36 @@
     let pausedAt = 0;
     let timerInterval = null;
 
+    const typeIcons = { video:'🌐', videoFlat:'🎬', image:'🖼️', image360:'🌐' };
+    const typeLabels = { video:'فيديو 360°', videoFlat:'فيديو عادي (لوحة)', image:'صورة عادية (لوحة)', image360:'صورة 360°' };
+
     let mediaList = [
-      {
-        name: 'جولة المعبد',
-        type: 'video',
-        url: 'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4'
-      }
+      { name:'جولة المعبد', type:'video', url:'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4' }
     ];
 
     function selectType(t) {
       selectedType = t;
-      ['video','image','image360'].forEach(type => {
-        document.getElementById('type' + type.charAt(0).toUpperCase() + type.slice(1))?.classList.remove('selected');
+      ['video','videoFlat','image','image360'].forEach(x => {
+        document.getElementById('t_' + x)?.classList.remove('selected');
       });
-      document.getElementById('typeVideo').classList.remove('selected');
-      document.getElementById('typeImage').classList.remove('selected');
-      document.getElementById('typeImage360').classList.remove('selected');
-      if (t === 'video') document.getElementById('typeVideo').classList.add('selected');
-      if (t === 'image') document.getElementById('typeImage').classList.add('selected');
-      if (t === 'image360') document.getElementById('typeImage360').classList.add('selected');
-    }
-
-    function typeIcon(type) {
-      if (type === 'video') return '🎬';
-      if (type === 'image360') return '🌐';
-      return '🖼️';
-    }
-
-    function typeLabel(type) {
-      if (type === 'video') return 'فيديو 360°';
-      if (type === 'image360') return 'صورة 360°';
-      return 'صورة عادية';
+      document.getElementById('t_' + t)?.classList.add('selected');
     }
 
     function renderMedia() {
       const list = document.getElementById('mediaList');
-      if (mediaList.length === 0) {
-        list.innerHTML = '<div class="empty-msg">مفيش محتوى لسه — ضيف من الأسفل</div>';
-        return;
-      }
+      if (!mediaList.length) { list.innerHTML = '<div class="empty-msg">مفيش محتوى لسه</div>'; return; }
       list.innerHTML = mediaList.map((m, i) => `
-        <div class="media-item ${i === currentIndex ? 'active' : ''}">
-          <div class="media-icon">${typeIcon(m.type)}</div>
+        <div class="media-item ${i===currentIndex?'active':''}">
+          <div class="media-icon">${typeIcons[m.type]||'📄'}</div>
           <div class="media-info">
             <div class="media-name">${m.name}</div>
-            <div class="media-type">${typeLabel(m.type)}</div>
+            <div class="media-type">${typeLabels[m.type]||m.type}</div>
           </div>
           <div class="media-actions">
             <button class="show-btn" onclick="showMedia(${i})">▶ عرض</button>
             <button class="del-btn" onclick="deleteMedia(${i})">🗑</button>
           </div>
-        </div>
-      `).join('');
+        </div>`).join('');
     }
 
     function addMedia() {
@@ -197,7 +171,7 @@
     function deleteMedia(i) {
       const name = mediaList[i].name;
       mediaList.splice(i, 1);
-      if (currentIndex >= mediaList.length) currentIndex = Math.max(0, mediaList.length - 1);
+      if (currentIndex >= mediaList.length) currentIndex = Math.max(0, mediaList.length-1);
       renderMedia();
       setStatus('🗑 تم حذف: ' + name);
     }
@@ -206,20 +180,13 @@
       currentIndex = i;
       const m = mediaList[i];
       renderMedia();
-      if (m.type === 'video') {
-        socket.emit('restart', { url: m.url, type: m.type });
-        isPlaying = true;
-        pausedAt = 0;
-        startedAt = Date.now();
-        startTimer();
-      } else {
-        socket.emit('show', { url: m.url, type: m.type });
-        isPlaying = true;
-        startedAt = Date.now();
-        pausedAt = 0;
-        startTimer();
-      }
+      pausedAt = 0;
+      startedAt = Date.now();
+      isPlaying = true;
+      const evt = (m.type === 'image' || m.type === 'image360') ? 'show' : 'restart';
+      socket.emit(evt, { url: m.url, type: m.type });
       document.getElementById('statusIndicator').textContent = '▶';
+      startTimer();
       setStatus('▶ عرض: ' + m.name);
     }
 
@@ -246,9 +213,7 @@
       if (!mediaList[currentIndex]) return;
       const m = mediaList[currentIndex];
       socket.emit('restart', { url: m.url, type: m.type });
-      isPlaying = true;
-      pausedAt = 0;
-      startedAt = Date.now();
+      isPlaying = true; pausedAt = 0; startedAt = Date.now();
       document.getElementById('statusIndicator').textContent = '▶';
       startTimer();
       setStatus('🔄 من الأول');
@@ -267,24 +232,17 @@
       }, 100);
     }
 
-    function updateTimerDisplay(seconds) {
-      if (seconds < 0) seconds = 0;
-      const h = Math.floor(seconds / 3600);
-      const m = Math.floor((seconds % 3600) / 60);
-      const s = Math.floor(seconds % 60);
+    function updateTimerDisplay(s) {
+      if (s < 0) s = 0;
+      const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
       document.getElementById('timerDisplay').textContent =
-        String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
     }
 
-    function setStatus(msg) {
-      document.getElementById('statusBox').textContent = msg;
-    }
+    function setStatus(msg) { document.getElementById('statusBox').textContent = msg; }
 
-    socket.on('viewers', (count) => {
-      document.getElementById('viewerCount').textContent = count;
-    });
-
-    socket.on('state', (data) => {
+    socket.on('viewers', c => document.getElementById('viewerCount').textContent = c);
+    socket.on('state', data => {
       isPlaying = data.playing;
       startedAt = data.startedAt;
       pausedAt = data.pausedAt || 0;
@@ -292,195 +250,6 @@
     });
 
     renderMedia();
-    startTimer();
-  </script>
-</body>
-</html>
-    .video-item.active .video-num { background:#00f5ff; color:#000; }
-    .video-name { flex:1; font-size:0.9rem; }
-    .video-play-btn { padding:6px 14px; background:#00f5ff; color:#000; border:none; border-radius:8px; font-size:0.8rem; font-weight:700; cursor:pointer; }
-
-    .add-box { width:100%; max-width:500px; background:#0d1117; border:1px dashed rgba(0,245,255,0.2); border-radius:12px; padding:18px; margin-bottom:20px; }
-    .add-label { color:#4a5568; font-size:0.8rem; margin-bottom:10px; }
-    .add-box input { width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(0,245,255,0.2); border-radius:8px; color:#fff; font-size:0.9rem; margin-bottom:8px; direction:ltr; }
-    .add-box input:focus { outline:none; border-color:#00f5ff; }
-    .add-box input::placeholder { color:#4a5568; }
-    .add-row { display:flex; gap:8px; }
-    .add-row input { flex:1; margin-bottom:0; }
-    .add-btn { padding:10px 18px; background:#7b2fff; color:#fff; border:none; border-radius:8px; font-size:0.9rem; font-weight:700; cursor:pointer; }
-
-    #statusBox { padding:12px 25px; background:#0d1117; border:1px solid rgba(0,245,255,0.15); border-radius:12px; color:#4a5568; font-size:0.85rem; text-align:center; width:100%; max-width:500px; }
-  </style>
-</head>
-<body>
-  <h1>🎮 لوحة التحكم</h1>
-  <p class="sub">بتتحكم في كل الأجهزة من هنا</p>
-
-  <!-- STATS -->
-  <div class="stats-row">
-    <div class="stat-box">
-      <div class="stat-num green" id="viewerCount">0</div>
-      <div class="stat-label">جهاز متصل</div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-num cyan" id="statusIndicator">⏸</div>
-      <div class="stat-label">الحالة</div>
-    </div>
-  </div>
-
-  <!-- TIMER -->
-  <div class="timer-box">
-    <div class="timer-display" id="timerDisplay">00:00:00</div>
-    <div class="timer-label">⏱ التايمر المتزامن</div>
-  </div>
-
-  <!-- CONTROLS -->
-  <div class="main-controls">
-    <button class="btn play" onclick="sendPlay()">▶ شغّل الكل</button>
-    <button class="btn pause" onclick="sendPause()">⏸ وقّف الكل</button>
-    <button class="btn restart" onclick="sendRestart()">🔄 من الأول</button>
-  </div>
-
-  <!-- VIDEOS -->
-  <div class="section-title">📹 قائمة الفيديوهات</div>
-  <div class="video-list" id="videoList"></div>
-
-  <!-- ADD VIDEO -->
-  <div class="add-box">
-    <div class="add-label">➕ إضافة فيديو جديد</div>
-    <input type="text" id="videoName" placeholder="اسم الفيديو" />
-    <div class="add-row">
-      <input type="text" id="videoUrl" placeholder="https://res.cloudinary.com/..." />
-      <button class="add-btn" onclick="addVideo()">إضافة</button>
-    </div>
-  </div>
-
-  <div id="statusBox">متصل بالسيرفر ✓</div>
-
-  <script>
-    const socket = io();
-    let currentVideo = 0;
-    let isPlaying = false;
-    let startedAt = null;
-    let pausedAt = 0;
-    let timerInterval = null;
-
-    let videos = [
-      {
-        name: 'جولة المعبد',
-        url: 'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4'
-      }
-    ];
-
-    socket.on('viewers', (count) => {
-      document.getElementById('viewerCount').textContent = count;
-    });
-
-    socket.on('state', (data) => {
-      isPlaying = data.playing;
-      startedAt = data.startedAt;
-      pausedAt = data.pausedAt || 0;
-      if (!isPlaying) updateTimerDisplay(pausedAt);
-    });
-
-    function startTimer() {
-      clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        if (!isPlaying || !startedAt) return;
-        const elapsed = (Date.now() - startedAt) / 1000;
-        updateTimerDisplay(elapsed);
-      }, 100);
-    }
-
-    function updateTimerDisplay(seconds) {
-      if (seconds < 0) seconds = 0;
-      const h = Math.floor(seconds / 3600);
-      const m = Math.floor((seconds % 3600) / 60);
-      const s = Math.floor(seconds % 60);
-      document.getElementById('timerDisplay').textContent =
-        String(h).padStart(2,'0') + ':' +
-        String(m).padStart(2,'0') + ':' +
-        String(s).padStart(2,'0');
-    }
-
-    function sendPlay() {
-      socket.emit('play', { videoUrl: videos[currentVideo]?.url });
-      isPlaying = true;
-      startedAt = Date.now() - (pausedAt * 1000);
-      document.getElementById('statusIndicator').textContent = '▶';
-      startTimer();
-      document.getElementById('statusBox').textContent = '▶ تم إرسال أمر التشغيل';
-    }
-
-    function sendPause() {
-      if (startedAt) pausedAt = (Date.now() - startedAt) / 1000;
-      isPlaying = false;
-      socket.emit('pause');
-      document.getElementById('statusIndicator').textContent = '⏸';
-      document.getElementById('statusBox').textContent = '⏸ تم إرسال أمر الإيقاف';
-    }
-
-    function sendRestart() {
-      socket.emit('restart', { videoUrl: videos[currentVideo]?.url });
-      isPlaying = true;
-      pausedAt = 0;
-      startedAt = Date.now();
-      document.getElementById('statusIndicator').textContent = '▶';
-      startTimer();
-      document.getElementById('statusBox').textContent = '🔄 من الأول';
-    }
-
-    function selectVideo(i) {
-      currentVideo = i;
-      renderVideos();
-      socket.emit('changeVideo', { videoUrl: videos[i].url });
-      pausedAt = 0;
-      startedAt = null;
-      isPlaying = false;
-      updateTimerDisplay(0);
-      document.getElementById('statusIndicator').textContent = '⏸';
-      document.getElementById('statusBox').textContent = 'تم اختيار: ' + videos[i].name;
-    }
-
-    function selectAndPlay(i) {
-      currentVideo = i;
-      renderVideos();
-      pausedAt = 0;
-      startedAt = Date.now();
-      isPlaying = true;
-      socket.emit('restart', { videoUrl: videos[i].url });
-      document.getElementById('statusIndicator').textContent = '▶';
-      startTimer();
-      document.getElementById('statusBox').textContent = '▶ شغّال: ' + videos[i].name;
-    }
-
-    function addVideo() {
-      const name = document.getElementById('videoName').value.trim();
-      const url = document.getElementById('videoUrl').value.trim();
-      if (!name || !url) return alert('حط اسم ورابط!');
-      videos.push({ name, url });
-      document.getElementById('videoName').value = '';
-      document.getElementById('videoUrl').value = '';
-      renderVideos();
-      document.getElementById('statusBox').textContent = 'تم إضافة: ' + name;
-    }
-
-    function renderVideos() {
-      const list = document.getElementById('videoList');
-      if (videos.length === 0) {
-        list.innerHTML = '<div style="color:#4a5568;text-align:center;padding:15px;font-size:0.85rem">مفيش فيديوهات لسه</div>';
-        return;
-      }
-      list.innerHTML = videos.map((v, i) => `
-        <div class="video-item ${i === currentVideo ? 'active' : ''}" onclick="selectVideo(${i})">
-          <div class="video-num">${i + 1}</div>
-          <div class="video-name">${v.name}</div>
-          <button class="video-play-btn" onclick="event.stopPropagation(); selectAndPlay(${i})">▶ شغّل</button>
-        </div>
-      `).join('');
-    }
-
-    renderVideos();
     startTimer();
   </script>
 </body>
