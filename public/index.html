@@ -4,12 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>VR 360</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:#000; overflow:hidden; width:100vw; height:100vh; }
-
-    /* شاشة الانتظار */
+    body { background:#000; overflow:hidden; }
     #waitScreen {
       position:fixed; inset:0; background:#050810;
       display:flex; flex-direction:column;
@@ -23,310 +22,101 @@
       0%,100%{box-shadow:0 0 0 0 rgba(0,245,255,0.4);transform:scale(1);}
       50%{box-shadow:0 0 0 20px rgba(0,245,255,0);transform:scale(1.05);}
     }
-
-    /* الكونتينر الكلي */
-    #vrContainer {
-      display:none; width:100vw; height:100vh; position:relative; background:#000;
+    #vrBtn {
+      display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+      z-index:9998; padding:14px 35px; background:#00f5ff; color:#000;
+      font-size:1.1rem; font-weight:900; border:none; border-radius:50px;
+      cursor:pointer; box-shadow:0 0 20px rgba(0,245,255,0.5);
     }
-
-    /* وضع شاشة واحدة */
-    #vrContainer.single canvas {
-      width:100vw !important; height:100vh !important;
-    }
-
-    /* وضع split — شاشتين */
-    #vrContainer.split {
-      display:flex;
-    }
-    #eyeLeft, #eyeRight {
-      width:50vw; height:100vh; overflow:hidden; position:relative;
-    }
-    #eyeLeft canvas, #eyeRight canvas {
-      position:absolute; top:0; left:0;
-      width:100vw !important; height:100vh !important;
-    }
-    #eyeRight canvas { left:-50vw !important; }
-
-    /* الخط الفاصل */
-    #divider {
-      display:none; position:fixed; left:50%; top:0; bottom:0;
-      width:3px; background:#000; z-index:100;
-    }
-    #vrContainer.split ~ #divider { display:block; }
-
-    /* أزرار التحكم */
-    #controls {
-      position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
-      display:flex; gap:12px; z-index:500;
-    }
-    .ctrl-btn {
-      padding:12px 20px; border:none; border-radius:50px;
-      font-size:0.9rem; font-weight:900; cursor:pointer;
-      backdrop-filter:blur(10px);
-    }
-    #splitBtn { background:rgba(0,245,255,0.9); color:#000; }
-    #fsBtn { background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.3); }
-
-    /* صورة عادية (لوحة) */
-    #imageOverlay {
-      display:none; position:fixed; inset:0; z-index:200;
-      background:#000; align-items:center; justify-content:center;
-    }
-    #imageOverlay.split-img {
-      display:flex;
-    }
-    .img-eye { width:50vw; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-    .img-eye img { max-width:95%; max-height:90%; object-fit:contain; border-radius:8px; }
-    #imageOverlay.single-img { display:flex; }
-    #imageOverlay.single-img .img-eye { width:100vw; }
-    #imageOverlay.single-img .img-eye:last-child { display:none; }
+    a-scene { width:100vw; height:100vh; }
   </style>
 </head>
 <body>
 
-<!-- انتظار -->
 <div id="waitScreen">
   <div class="logo">🥽 VR 360</div>
   <div class="wait-text">في انتظار المضيف...</div>
   <div class="pulse"></div>
 </div>
 
-<!-- VR Canvas -->
-<div id="vrContainer">
-  <div id="eyeLeft"><canvas id="canvasLeft"></canvas></div>
-  <div id="eyeRight"><canvas id="canvasRight"></canvas></div>
-</div>
-<div id="divider"></div>
+<button id="vrBtn" onclick="enterVRManual()">🥽 دخول VR</button>
 
-<!-- صور عادية -->
-<div id="imageOverlay">
-  <div class="img-eye"><img id="imgLeft" src="" /></div>
-  <div class="img-eye"><img id="imgRight" src="" /></div>
-</div>
-
-<!-- أزرار -->
-<div id="controls" style="display:none">
-  <button class="ctrl-btn" id="splitBtn" onclick="toggleSplit()">👓 Split VR</button>
-  <button class="ctrl-btn" id="fsBtn" onclick="goFullscreen()">⛶ ملء شاشة</button>
-</div>
+<a-scene id="scene"
+  vr-mode-ui="enabled:true; cardboardModeEnabled:true"
+  device-orientation-permission-ui="enabled:true"
+  style="display:none">
+  <a-assets>
+    <video id="video360" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
+  </a-assets>
+  <a-videosphere id="videoSphere" src="#video360" rotation="0 180 0" visible="false"></a-videosphere>
+  <a-sky id="imageSky" src="" visible="false" radius="100"></a-sky>
+  <a-image id="imagePanel" src="" width="3" height="2" position="0 1.6 -3" visible="false"></a-image>
+  <a-camera look-controls wasd-controls="enabled:false">
+    <a-cursor color="#00f5ff"></a-cursor>
+  </a-camera>
+</a-scene>
 
 <script>
-// ===== THREE.JS ثقيل — هنستخدم Canvas 2D مع equirectangular projection =====
-// بدل A-Frame هنعمل renderer بسيط بـ CSS3D transform + gyroscope
+  const video = document.getElementById('video360');
+  const scene = document.getElementById('scene');
+  const videoSphere = document.getElementById('videoSphere');
+  const imageSky = document.getElementById('imageSky');
+  const imagePanel = document.getElementById('imagePanel');
+  const vrBtn = document.getElementById('vrBtn');
+  const socket = io();
+  let sceneStarted = false;
 
-let isSplit = false;
-let currentType = null;
-let yaw = 0, pitch = 0;
-let lastBeta = null, lastGamma = null;
-let animFrame = null;
-let videoEl = null;
-
-const socket = io();
-
-// ===== Gyroscope =====
-function requestGyro() {
-  if (typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    DeviceOrientationEvent.requestPermission().then(r => {
-      if (r === 'granted') window.addEventListener('deviceorientation', onGyro);
-    });
-  } else {
-    window.addEventListener('deviceorientation', onGyro);
-  }
-}
-
-function onGyro(e) {
-  if (e.beta === null) return;
-  if (lastBeta !== null) {
-    pitch += (e.beta - lastBeta) * 0.4;
-    yaw -= (e.gamma - lastGamma) * 0.4;
-    pitch = Math.max(-85, Math.min(85, pitch));
-  }
-  lastBeta = e.beta;
-  lastGamma = e.gamma;
-}
-
-// ===== Renderer بـ Canvas =====
-function setupRenderer() {
-  document.getElementById('waitScreen').style.display = 'none';
-  document.getElementById('vrContainer').style.display = 'flex';
-  document.getElementById('controls').style.display = 'flex';
-
-  renderLoop();
-  requestGyro();
-}
-
-function renderLoop() {
-  drawEye('canvasLeft', isSplit ? -32 : 0);
-  if (isSplit) drawEye('canvasRight', 32);
-  animFrame = requestAnimationFrame(renderLoop);
-}
-
-function drawEye(canvasId, eyeOffset) {
-  if (currentType !== 'video' && currentType !== 'image360') return;
-
-  const canvas = document.getElementById(canvasId);
-  const parent = canvas.parentElement;
-  const W = parent.offsetWidth;
-  const H = parent.offsetHeight;
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext('2d');
-
-  let source = null;
-  if (currentType === 'video') source = videoEl;
-  else if (currentType === 'image360') source = window._img360;
-
-  if (!source) return;
-
-  // equirectangular → استخرج الجزء المقابل للاتجاه
-  let srcW, srcH;
-  if (currentType === 'video') {
-    srcW = videoEl.videoWidth || 3840;
-    srcH = videoEl.videoHeight || 1920;
-  } else {
-    srcW = window._img360.naturalWidth || 4096;
-    srcH = window._img360.naturalHeight || 2048;
+  function showScene() {
+    if (sceneStarted) return;
+    sceneStarted = true;
+    document.getElementById('waitScreen').style.display = 'none';
+    scene.style.display = 'block';
+    vrBtn.style.display = 'block';
   }
 
-  // حول yaw/pitch لإحداثيات في الـ texture
-  const fovH = 90; // زاوية الرؤية أفقي
-  const fovV = 70; // زاوية الرؤية عمودي
+  function enterVRManual() {
+    vrBtn.style.display = 'none';
+    scene.enterVR();
+  }
 
-  // eyeOffset يحرك الكاميرا شوية للجنب لكل عين
-  const adjustedYaw = yaw + eyeOffset;
+  scene.addEventListener('exit-vr', () => {
+    vrBtn.style.display = 'block';
+  });
 
-  const u = ((adjustedYaw % 360 + 360) % 360) / 360;
-  const v = (pitch + 90) / 180;
+  function hideAll() {
+    videoSphere.setAttribute('visible', false);
+    imageSky.setAttribute('visible', false);
+    imagePanel.setAttribute('visible', false);
+    video.pause();
+  }
 
-  const tileW = (fovH / 360) * srcW;
-  const tileH = (fovV / 180) * srcH;
+  function handleState(data) {
+    if (!data.url) return;
+    showScene();
+    hideAll();
 
-  const sx = u * srcW - tileW / 2;
-  const sy = v * srcH - tileH / 2;
-
-  ctx.save();
-  ctx.clearRect(0, 0, W, H);
-
-  // رسم مع wrap أفقي
-  const drawWrapped = (dx, dw) => {
-    let x = ((sx % srcW) + srcW) % srcW;
-    if (x + dw <= srcW) {
-      ctx.drawImage(source, x, Math.max(0, sy), dw, tileH, 0, 0, W, H);
-    } else {
-      const part1 = srcW - x;
-      const part2 = dw - part1;
-      ctx.drawImage(source, x, Math.max(0, sy), part1, tileH, 0, 0, W * (part1 / dw), H);
-      ctx.drawImage(source, 0, Math.max(0, sy), part2, tileH, W * (part1 / dw), 0, W * (part2 / dw), H);
-    }
-  };
-
-  drawWrapped(sx, tileW);
-  ctx.restore();
-}
-
-// ===== Toggle Split =====
-function toggleSplit() {
-  isSplit = !isSplit;
-  const container = document.getElementById('vrContainer');
-  const divider = document.getElementById('divider');
-  const overlay = document.getElementById('imageOverlay');
-  const btn = document.getElementById('splitBtn');
-
-  if (isSplit) {
-    container.classList.add('split');
-    container.classList.remove('single');
-    divider.style.display = 'block';
-    btn.textContent = '📱 شاشة واحدة';
-    if (currentType === 'image') {
-      overlay.className = 'split-img';
-    }
-  } else {
-    container.classList.remove('split');
-    container.classList.add('single');
-    divider.style.display = 'none';
-    btn.textContent = '👓 Split VR';
-    if (currentType === 'image') {
-      overlay.className = 'single-img';
+    if (data.type === 'video') {
+      if (video.src !== data.url) { video.src = data.url; video.load(); }
+      videoSphere.setAttribute('visible', true);
+      if (data.playing && data.startedAt) {
+        const elapsed = (Date.now() - data.startedAt) / 1000;
+        video.currentTime = Math.max(0, elapsed);
+        video.play().catch(() => { video.muted = true; video.play(); });
+      } else {
+        if (data.pausedAt) video.currentTime = data.pausedAt;
+        video.pause();
+      }
+    } else if (data.type === 'image360') {
+      imageSky.setAttribute('src', data.url);
+      imageSky.setAttribute('visible', true);
+    } else if (data.type === 'image') {
+      imagePanel.setAttribute('src', data.url);
+      imagePanel.setAttribute('visible', true);
     }
   }
 
-  // إعادة رسم
-  document.getElementById('eyeRight').style.display = isSplit ? 'block' : 'none';
-}
-
-function goFullscreen() {
-  document.documentElement.requestFullscreen?.() ||
-  document.documentElement.webkitRequestFullscreen?.();
-}
-
-// ===== معالجة الحالة =====
-function handleState(data) {
-  if (!data.url) return;
-  currentType = data.type;
-
-  // أخفي كل حاجة
-  document.getElementById('vrContainer').style.display = 'none';
-  document.getElementById('imageOverlay').style.display = 'none';
-  if (videoEl) { videoEl.pause(); videoEl = null; }
-
-  if (data.type === 'video') {
-    setupVideoSource(data);
-  } else if (data.type === 'image360') {
-    setup360Image(data.url);
-  } else if (data.type === 'image') {
-    setupFlatImage(data.url);
-  }
-}
-
-function setupVideoSource(data) {
-  if (!videoEl) {
-    videoEl = document.createElement('video');
-    videoEl.crossOrigin = 'anonymous';
-    videoEl.loop = true;
-    videoEl.playsInline = true;
-    videoEl.muted = false;
-  }
-  videoEl.src = data.url;
-  videoEl.load();
-
-  setupRenderer();
-  document.getElementById('vrContainer').style.display = 'flex';
-  document.getElementById('eyeRight').style.display = isSplit ? 'block' : 'none';
-
-  if (data.playing && data.startedAt) {
-    const elapsed = (Date.now() - data.startedAt) / 1000;
-    videoEl.currentTime = Math.max(0, elapsed);
-    videoEl.play().catch(() => { videoEl.muted = true; videoEl.play(); });
-  } else {
-    if (data.pausedAt) videoEl.currentTime = data.pausedAt;
-    videoEl.pause();
-  }
-}
-
-function setup360Image(url) {
-  window._img360 = new Image();
-  window._img360.crossOrigin = 'anonymous';
-  window._img360.src = url;
-  window._img360.onload = () => {
-    setupRenderer();
-    document.getElementById('vrContainer').style.display = 'flex';
-    document.getElementById('eyeRight').style.display = isSplit ? 'block' : 'none';
-  };
-}
-
-function setupFlatImage(url) {
-  setupRenderer();
-  document.getElementById('imageOverlay').style.display = 'flex';
-  document.getElementById('vrContainer').style.display = 'none';
-  document.getElementById('imgLeft').src = url;
-  document.getElementById('imgRight').src = url;
-  const overlay = document.getElementById('imageOverlay');
-  overlay.className = isSplit ? 'split-img' : 'single-img';
-}
-
-socket.on('state', handleState);
-socket.on('sync', handleState);
+  socket.on('state', handleState);
+  socket.on('sync', handleState);
 </script>
 </body>
 </html>
