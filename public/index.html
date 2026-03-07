@@ -9,6 +9,7 @@
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { background:#000; overflow:hidden; }
+
     #waitScreen {
       position:fixed; inset:0; background:#050810;
       display:flex; flex-direction:column;
@@ -22,24 +23,60 @@
       0%,100%{box-shadow:0 0 0 0 rgba(0,245,255,0.4);transform:scale(1);}
       50%{box-shadow:0 0 0 20px rgba(0,245,255,0);transform:scale(1.05);}
     }
-    #vrBtn {
-      display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
-      z-index:9998; padding:14px 35px; background:#00f5ff; color:#000;
-      font-size:1.1rem; font-weight:900; border:none; border-radius:50px;
-      cursor:pointer; box-shadow:0 0 20px rgba(0,245,255,0.5);
+
+    /* شاشة اختيار الوضع */
+    #modeScreen {
+      display:none;
+      position:fixed; inset:0; background:#050810;
+      flex-direction:column; align-items:center; justify-content:center;
+      z-index:9998; gap:20px;
     }
+    .mode-title { color:#fff; font-size:1.3rem; font-weight:700; margin-bottom:10px; }
+    .mode-btn {
+      width:260px; padding:18px; border:none; border-radius:16px;
+      font-size:1.1rem; font-weight:900; cursor:pointer;
+      display:flex; align-items:center; gap:12px; justify-content:center;
+    }
+    .mode-normal { background:#fff; color:#000; }
+    .mode-vr { background:#00f5ff; color:#000; }
+    .mode-desc { font-size:0.75rem; font-weight:400; opacity:0.6; display:block; margin-top:4px; }
+
     a-scene { width:100vw; height:100vh; }
+
+    /* زرار التبديل أثناء العرض */
+    #switchBtn {
+      display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+      z-index:9997; padding:10px 22px; background:rgba(0,0,0,0.6);
+      color:#fff; border:1px solid rgba(255,255,255,0.3);
+      font-size:0.85rem; font-weight:700; border-radius:50px; cursor:pointer;
+      backdrop-filter:blur(10px);
+    }
   </style>
 </head>
 <body>
 
+<!-- انتظار المضيف -->
 <div id="waitScreen">
   <div class="logo">🥽 VR 360</div>
   <div class="wait-text">في انتظار المضيف...</div>
   <div class="pulse"></div>
 </div>
 
-<button id="vrBtn" onclick="enterVRManual()">🥽 دخول VR</button>
+<!-- اختيار الوضع -->
+<div id="modeScreen">
+  <div class="mode-title">اختار وضع العرض</div>
+  <button class="mode-btn mode-normal" onclick="startMode('normal')">
+    📱 وضع عادي
+    <span class="mode-desc">شاشة واحدة</span>
+  </button>
+  <button class="mode-btn mode-vr" onclick="startMode('vr')">
+    🥽 وضع VR
+    <span class="mode-desc">شاشتين للنظارة</span>
+  </button>
+</div>
+
+<!-- زرار التبديل -->
+<button id="switchBtn" onclick="showModeScreen()">🔄 غيّر الوضع</button>
 
 <a-scene id="scene"
   vr-mode-ui="enabled:true; cardboardModeEnabled:true"
@@ -62,26 +99,32 @@
   const videoSphere = document.getElementById('videoSphere');
   const imageSky = document.getElementById('imageSky');
   const imagePanel = document.getElementById('imagePanel');
-  const vrBtn = document.getElementById('vrBtn');
   const socket = io();
+
   let sceneStarted = false;
+  let pendingData = null;
+  let currentMode = null; // 'normal' or 'vr'
 
-  function showScene() {
-    if (sceneStarted) return;
-    sceneStarted = true;
-    document.getElementById('waitScreen').style.display = 'none';
+  // ===== لما المضيف يبدأ =====
+  function showModeScreen() {
+    scene.style.display = 'none';
+    document.getElementById('switchBtn').style.display = 'none';
+    document.getElementById('modeScreen').style.display = 'flex';
+  }
+
+  function startMode(mode) {
+    currentMode = mode;
+    document.getElementById('modeScreen').style.display = 'none';
     scene.style.display = 'block';
-    vrBtn.style.display = 'block';
-  }
+    document.getElementById('switchBtn').style.display = 'block';
 
-  function enterVRManual() {
-    vrBtn.style.display = 'none';
-    scene.enterVR();
-  }
+    if (mode === 'vr') {
+      scene.enterVR();
+    }
 
-  scene.addEventListener('exit-vr', () => {
-    vrBtn.style.display = 'block';
-  });
+    // طبّق الداتا اللي كانت معلّقة
+    if (pendingData) applyState(pendingData);
+  }
 
   function hideAll() {
     videoSphere.setAttribute('visible', false);
@@ -90,11 +133,8 @@
     video.pause();
   }
 
-  function handleState(data) {
-    if (!data.url) return;
-    showScene();
+  function applyState(data) {
     hideAll();
-
     if (data.type === 'video') {
       if (video.src !== data.url) { video.src = data.url; video.load(); }
       videoSphere.setAttribute('visible', true);
@@ -114,6 +154,23 @@
       imagePanel.setAttribute('visible', true);
     }
   }
+
+  function handleState(data) {
+    if (!data.url) return;
+    pendingData = data;
+
+    if (!sceneStarted) {
+      sceneStarted = true;
+      document.getElementById('waitScreen').style.display = 'none';
+      showModeScreen();
+    } else if (currentMode) {
+      applyState(data);
+    }
+  }
+
+  scene.addEventListener('exit-vr', () => {
+    currentMode = 'normal';
+  });
 
   socket.on('state', handleState);
   socket.on('sync', handleState);
