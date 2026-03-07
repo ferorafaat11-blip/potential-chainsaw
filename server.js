@@ -8,81 +8,158 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-let state = {
-  type: 'video', url: '', degree: 0,
-  playing: false, startedAt: null, pausedAt: 0,
-  volume: 1, muted: false,
-};
+// كل room ليها state خاص بيها
+const rooms = {}; // { "42": { state, viewers } }
 
-let viewers = 0;
+function createRoom() {
+  // كود رقمين عشوائي مش موجود
+  let code;
+  do { code = String(Math.floor(10 + Math.random() * 90)); } while (rooms[code]);
+  rooms[code] = {
+    code,
+    state: { type:'video', url:'', degree:0, playing:false, startedAt:null, pausedAt:0, volume:1, muted:false },
+    viewers: 0,
+  };
+  return code;
+}
+
+function getRoomByHost(socketId) {
+  return Object.values(rooms).find(r => r.hostId === socketId);
+}
 
 io.on('connection', (socket) => {
-  viewers++;
-  io.emit('viewers', viewers);
-  socket.emit('state', { ...state, serverTime: Date.now() });
 
-  socket.on('disconnect', () => { viewers--; io.emit('viewers', viewers); });
+  // ===== HOST: إنشاء room =====
+  socket.on('createRoom', () => {
+    const code = createRoom();
+    rooms[code].hostId = socket.id;
+    socket.join('host:' + code);
+    socket.emit('roomCreated', { code });
+  });
+
+  // ===== HOST: أوامر التحكم =====
+  function getHostRoom() {
+    return Object.values(rooms).find(r => r.hostId === socket.id);
+  }
+
+  function broadcastState(room) {
+    io.to('room:' + room.code).emit('state', { ...room.state, serverTime: Date.now() });
+    io.to('host:' + room.code).emit('viewers', room.viewers);
+  }
 
   socket.on('play', (data) => {
-    if (data?.url)    state.url    = data.url;
-    if (data?.type)   state.type   = data.type;
-    if (data?.degree  !== undefined) state.degree  = data.degree;
-    if (data?.volume  !== undefined) state.volume  = data.volume;
-    if (data?.muted   !== undefined) state.muted   = data.muted;
-    state.playing   = true;
-    state.startedAt = Date.now() - (state.pausedAt * 1000);
-    io.emit('state', { ...state, serverTime: Date.now() });
+    const room = getHostRoom(); if (!room) return;
+    if (data?.url)    room.state.url    = data.url;
+    if (data?.type)   room.state.type   = data.type;
+    if (data?.degree  !== undefined) room.state.degree  = data.degree;
+    if (data?.volume  !== undefined) room.state.volume  = data.volume;
+    if (data?.muted   !== undefined) room.state.muted   = data.muted;
+    room.state.playing   = true;
+    room.state.startedAt = Date.now() - (room.state.pausedAt * 1000);
+    broadcastState(room);
   });
 
   socket.on('pause', () => {
-    if (state.startedAt) state.pausedAt = (Date.now() - state.startedAt) / 1000;
-    state.playing = false;
-    io.emit('state', { ...state, serverTime: Date.now() });
+    const room = getHostRoom(); if (!room) return;
+    if (room.state.startedAt) room.state.pausedAt = (Date.now() - room.state.startedAt) / 1000;
+    room.state.playing = false;
+    broadcastState(room);
   });
 
   socket.on('restart', (data) => {
-    if (data?.url)    state.url    = data.url;
-    if (data?.type)   state.type   = data.type;
-    if (data?.degree  !== undefined) state.degree  = data.degree;
-    if (data?.volume  !== undefined) state.volume  = data.volume;
-    if (data?.muted   !== undefined) state.muted   = data.muted;
-    state.playing   = true;
-    state.pausedAt  = 0;
-    state.startedAt = Date.now();
-    io.emit('state', { ...state, serverTime: Date.now() });
+    const room = getHostRoom(); if (!room) return;
+    if (data?.url)    room.state.url    = data.url;
+    if (data?.type)   room.state.type   = data.type;
+    if (data?.degree  !== undefined) room.state.degree  = data.degree;
+    if (data?.volume  !== undefined) room.state.volume  = data.volume;
+    if (data?.muted   !== undefined) room.state.muted   = data.muted;
+    room.state.playing   = true;
+    room.state.pausedAt  = 0;
+    room.state.startedAt = Date.now();
+    broadcastState(room);
   });
 
   socket.on('show', (data) => {
-    state.url     = data.url;
-    state.type    = data.type;
-    if (data?.degree  !== undefined) state.degree  = data.degree;
-    if (data?.volume  !== undefined) state.volume  = data.volume;
-    if (data?.muted   !== undefined) state.muted   = data.muted;
-    state.playing   = true;
-    state.startedAt = Date.now();
-    state.pausedAt  = 0;
-    io.emit('state', { ...state, serverTime: Date.now() });
+    const room = getHostRoom(); if (!room) return;
+    room.state.url  = data.url;
+    room.state.type = data.type;
+    if (data?.degree !== undefined) room.state.degree = data.degree;
+    if (data?.volume !== undefined) room.state.volume = data.volume;
+    if (data?.muted  !== undefined) room.state.muted  = data.muted;
+    room.state.playing   = true;
+    room.state.startedAt = Date.now();
+    room.state.pausedAt  = 0;
+    broadcastState(room);
   });
 
   socket.on('seek', (data) => {
-    state.pausedAt  = data.seconds;
-    state.startedAt = Date.now() - (data.seconds * 1000);
-    io.emit('state', { ...state, serverTime: Date.now() });
+    const room = getHostRoom(); if (!room) return;
+    room.state.pausedAt  = data.seconds;
+    room.state.startedAt = Date.now() - (data.seconds * 1000);
+    broadcastState(room);
   });
 
   socket.on('setVolume', (data) => {
-    if (data?.volume !== undefined) state.volume = data.volume;
-    if (data?.muted  !== undefined) state.muted  = data.muted;
-    io.emit('setVolume', { volume: state.volume, muted: state.muted });
-  });
-
-  // الأجهزة بتبعت مدة الفيديو للـ host
-  socket.on('reportDuration', (data) => {
-    socket.broadcast.emit('videoDuration', data);
+    const room = getHostRoom(); if (!room) return;
+    if (data?.volume !== undefined) room.state.volume = data.volume;
+    if (data?.muted  !== undefined) room.state.muted  = data.muted;
+    io.to('room:' + room.code).emit('setVolume', { volume: room.state.volume, muted: room.state.muted });
   });
 
   socket.on('syncAll', () => {
-    io.emit('sync', { ...state, serverTime: Date.now() });
+    const room = getHostRoom(); if (!room) return;
+    io.to('room:' + room.code).emit('sync', { ...room.state, serverTime: Date.now() });
+  });
+
+  socket.on('startSession', () => {
+    const room = getHostRoom(); if (!room) return;
+    io.to('room:' + room.code).emit('sessionStart');
+  });
+
+  socket.on('stopSession', () => {
+    const room = getHostRoom(); if (!room) return;
+    room.state.playing = false; room.state.startedAt = null; room.state.pausedAt = 0;
+    io.to('room:' + room.code).emit('sessionStop');
+  });
+
+  socket.on('closeRoom', () => {
+    const room = getHostRoom(); if (!room) return;
+    io.to('room:' + room.code).emit('sessionStop');
+    delete rooms[room.code];
+  });
+
+  // ===== VIEWER: دخول room =====
+  socket.on('joinRoom', (data) => {
+    const code = String(data.code);
+    const room = rooms[code];
+    if (!room) { socket.emit('joinError', { msg: 'كود غلط!' }); return; }
+    socket.join('room:' + code);
+    socket.data.roomCode = code;
+    room.viewers++;
+    io.to('host:' + code).emit('viewers', room.viewers);
+    socket.emit('joinOk', { code });
+    socket.emit('state', { ...room.state, serverTime: Date.now() });
+  });
+
+  socket.on('reportDuration', (data) => {
+    const code = socket.data.roomCode; if (!code) return;
+    const room = rooms[code]; if (!room) return;
+    io.to('host:' + code).emit('videoDuration', data);
+  });
+
+  // ===== Disconnect =====
+  socket.on('disconnect', () => {
+    const code = socket.data.roomCode;
+    if (code && rooms[code]) {
+      rooms[code].viewers = Math.max(0, rooms[code].viewers - 1);
+      io.to('host:' + code).emit('viewers', rooms[code].viewers);
+    }
+    // لو المضيف اتفصل
+    const room = getRoomByHost(socket.id);
+    if (room) {
+      io.to('room:' + room.code).emit('sessionStop');
+      delete rooms[room.code];
+    }
   });
 });
 
