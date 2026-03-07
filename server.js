@@ -14,7 +14,7 @@ const rooms = {}; // { "42": { state, viewers } }
 function createRoom() {
   // كود رقمين عشوائي مش موجود
   let code;
-  do { code = String(Math.floor(10 + Math.random() * 90)); } while (rooms[code]);
+  do { code = String(Math.floor(1 + Math.random() * 9)); } while (rooms[code]);
   rooms[code] = {
     code,
     state: { type:'video', url:'', degree:0, playing:false, startedAt:null, pausedAt:0, volume:1, muted:false },
