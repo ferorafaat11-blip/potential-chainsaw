@@ -14,27 +14,39 @@
       align-items:center; justify-content:center; padding:20px;
     }
     h1 { color:#00f5ff; font-size:1.8rem; margin-bottom:10px; }
-    .sub { color:#4a5568; margin-bottom:30px; font-size:0.9rem; }
+    .sub { color:#4a5568; margin-bottom:50px; font-size:0.9rem; }
     .btn {
       width:200px; padding:18px; border-radius:16px; border:none;
       font-size:1.2rem; font-weight:900; cursor:pointer; margin:10px;
     }
     .play { background:#00f5ff; color:#000; }
     .pause { background:#ff006e; color:#fff; }
-    .upload-box {
-      background:#0d1117; border:2px dashed #00f5ff44;
-      border-radius:16px; padding:25px; text-align:center;
-      margin-bottom:30px; width:100%; max-width:400px;
-    }
-    input[type=file] { display:none; }
-    .upload-btn {
-      padding:12px 28px; background:#7b2fff; color:#fff;
-      border:none; border-radius:10px; cursor:pointer;
-      font-size:1rem; font-weight:700; margin-top:10px;
-    }
-    #progress { color:#00f5ff; margin-top:10px; font-size:0.9rem; }
     #statusBox {
-      margin-top:20px; padding:15px 30px;
+      margin-top:30px; padding:15px 30px;
+      background:#0d1117; border:1px solid #00f5ff33;
+      border-radius:12px; color:#4a5568; font-size:0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 لوحة التحكم</h1>
+  <p class="sub">بتتحكم في كل الأجهزة من هنا</p>
+  <button class="btn play" onclick="sendPlay()">▶ شغّل الكل</button>
+  <button class="btn pause" onclick="sendPause()">⏸ وقّف الكل</button>
+  <div id="statusBox">متصل بالسيرفر ✓</div>
+  <script>
+    const socket = io();
+    function sendPlay() {
+      socket.emit('play');
+      document.getElementById('statusBox').textContent = '▶ تم إرسال أمر التشغيل';
+    }
+    function sendPause() {
+      socket.emit('pause');
+      document.getElementById('statusBox').textContent = '⏸ تم إرسال أمر الإيقاف';
+    }
+  </script>
+</body>
+</html>      margin-top:20px; padding:15px 30px;
       background:#0d1117; border:1px solid #00f5ff33;
       border-radius:12px; color:#4a5568; font-size:0.9rem;
     }
