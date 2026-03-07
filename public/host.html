@@ -65,6 +65,39 @@
     .stat-dot.cyan  { background:var(--accent); box-shadow:0 0 8px var(--accent); }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
     .stat-val { color:var(--accent); font-weight:700; }
+    .session-btns { display:flex; gap:8px; }
+    .sess-btn {
+      padding:5px 14px; border-radius:20px; border:none;
+      font-size:0.78rem; font-weight:900; cursor:pointer;
+      font-family:'Tajawal',sans-serif; transition:all 0.2s;
+    }
+    .sess-start { background:#22c55e; color:#000; }
+    .sess-stop  { background:var(--danger); color:#fff; }
+    .sess-btn:active { transform:scale(0.95); }
+
+    /* شاشة الـ room */
+    #roomScreen {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--bg);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px;
+    }
+    .room-logo { font-family:'Space Mono',monospace; font-size:1rem; color:var(--accent); letter-spacing:4px; }
+    .room-title { color:var(--text); font-size:1.2rem; font-weight:700; }
+    .create-btn {
+      padding:14px 40px; background:var(--accent); color:#000;
+      border:none; border-radius:12px; font-size:1.1rem; font-weight:900;
+      cursor:pointer; font-family:'Tajawal',sans-serif;
+    }
+
+    /* كود الـ room في الهيدر */
+    .room-code-pill {
+      display:flex; align-items:center; gap:8px;
+      padding:5px 14px; border-radius:20px;
+      background:rgba(0,210,255,0.1); border:1px solid rgba(0,210,255,0.3);
+      font-family:'Space Mono',monospace;
+    }
+    .room-code-label { font-size:0.7rem; color:var(--muted); }
+    .room-code-val { font-size:1.3rem; font-weight:700; color:var(--accent); letter-spacing:6px; text-shadow:0 0 15px rgba(0,210,255,0.5); }
 
     /* MAIN LAYOUT */
     .main {
@@ -285,6 +318,13 @@
 </head>
 <body>
 
+<!-- شاشة إنشاء الـ Room -->
+<div id="roomScreen">
+  <div class="room-logo">🥽 VR CONTROL</div>
+  <div class="room-title">ابدأ جلسة جديدة</div>
+  <button class="create-btn" onclick="createRoom()">➕ إنشاء Room</button>
+</div>
+
 <!-- HEADER -->
 <div class="header">
   <div class="header-logo">
@@ -292,6 +332,15 @@
     <span class="logo-text">VR CONTROL</span>
   </div>
   <div class="header-stats">
+    <!-- كود الـ Room -->
+    <div class="room-code-pill">
+      <span class="room-code-label">كود الدخول</span>
+      <span class="room-code-val" id="roomCodeDisplay">--</span>
+    </div>
+    <div class="session-btns">
+      <button class="sess-btn sess-start" onclick="startSession()">▶ ابدأ الجلسة</button>
+      <button class="sess-btn sess-stop"  onclick="stopSession()">⏹ وقّف الجلسة</button>
+    </div>
     <div class="stat-pill">
       <div class="stat-dot green"></div>
       <span>أجهزة:</span>
@@ -407,6 +456,18 @@
   let isPlaying=false, startedAt=null, pausedAt=0;
   let timerInterval=null, isMuted=false, currentVolume=100;
   let videoDuration=0, isDragging=false;
+  let myRoomCode = null;
+
+  // ===== Room =====
+  function createRoom() {
+    socket.emit('createRoom');
+  }
+  socket.on('roomCreated', (data) => {
+    myRoomCode = data.code;
+    document.getElementById('roomScreen').style.display = 'none';
+    document.getElementById('roomCodeDisplay').textContent = data.code;
+    setStatus('✅ تم إنشاء Room — الكود: ' + data.code);
+  });
 
   const typeIcons  = { video:'🌐', videoFlat:'🎬', image:'🖼️', image360:'🌐' };
   const typeLabels = { video:'فيديو 360°', videoFlat:'فيديو عادي', image:'صورة عادية', image360:'صورة 360°' };
@@ -595,6 +656,18 @@
     return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
   }
   function setStatus(msg) { document.getElementById('statusBox').textContent=msg; }
+
+  function startSession() {
+    socket.emit('startSession');
+    setStatus('▶ تم إرسال أمر بدء الجلسة');
+  }
+  function stopSession() {
+    socket.emit('stopSession');
+    isPlaying=false; startedAt=null; pausedAt=0;
+    updateTimerDisplay(0);
+    document.getElementById('statusText').textContent='⏹ متوقف';
+    setStatus('⏹ تم إيقاف الجلسة — الأجهزة في الانتظار');
+  }
 
   socket.on('videoDuration',(data)=>{
     if(data.duration>0){
