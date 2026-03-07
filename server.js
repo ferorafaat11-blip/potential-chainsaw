@@ -67,28 +67,3 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log('Server on port ' + PORT));
-  socket.on('pause', () => {
-    if (state.startedAt) state.pausedAt = (Date.now() - state.startedAt) / 1000;
-    state.playing = false;
-    io.emit('state', { ...state, serverTime: Date.now() });
-  });
-
-  socket.on('restart', (data) => {
-    if (data && data.videoUrl) state.videoUrl = data.videoUrl;
-    state.playing = true;
-    state.pausedAt = 0;
-    state.startedAt = Date.now();
-    io.emit('state', { ...state, serverTime: Date.now() });
-  });
-
-  socket.on('changeVideo', (data) => {
-    state.videoUrl = data.videoUrl;
-    state.playing = false;
-    state.pausedAt = 0;
-    state.startedAt = null;
-    io.emit('state', { ...state, serverTime: Date.now() });
-  });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('Server on port ' + PORT));
