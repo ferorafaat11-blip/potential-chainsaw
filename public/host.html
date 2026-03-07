@@ -7,102 +7,219 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      background:#050810; color:#fff;
-      font-family:sans-serif; min-height:100vh;
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:center; padding:20px;
-    }
-    h1 { color:#00f5ff; font-size:1.8rem; margin-bottom:10px; }
-    .sub { color:#4a5568; margin-bottom:50px; font-size:0.9rem; }
-    .btn {
-      width:200px; padding:18px; border-radius:16px; border:none;
-      font-size:1.2rem; font-weight:900; cursor:pointer; margin:10px;
-    }
+    body { background:#050810; color:#fff; font-family:sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:30px 20px; }
+    h1 { color:#00f5ff; font-size:1.8rem; margin-bottom:5px; }
+    .sub { color:#4a5568; margin-bottom:25px; font-size:0.9rem; }
+
+    .stats-row { display:flex; gap:15px; width:100%; max-width:500px; margin-bottom:20px; }
+    .stat-box { flex:1; background:#0d1117; border:1px solid rgba(0,245,255,0.15); border-radius:16px; padding:15px; text-align:center; }
+    .stat-num { font-size:2.5rem; font-weight:900; font-family:monospace; }
+    .stat-num.cyan { color:#00f5ff; text-shadow:0 0 15px rgba(0,245,255,0.4); }
+    .stat-num.green { color:#22c55e; text-shadow:0 0 15px rgba(34,197,94,0.4); }
+    .stat-label { color:#4a5568; font-size:0.7rem; letter-spacing:2px; margin-top:4px; }
+
+    .timer-box { background:#0d1117; border:2px solid rgba(0,245,255,0.2); border-radius:20px; padding:20px 40px; margin-bottom:20px; text-align:center; width:100%; max-width:500px; }
+    .timer-display { font-size:3.5rem; font-weight:900; color:#00f5ff; font-family:monospace; letter-spacing:4px; text-shadow:0 0 20px rgba(0,245,255,0.5); }
+    .timer-label { color:#4a5568; font-size:0.75rem; letter-spacing:2px; margin-top:5px; }
+
+    .main-controls { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:20px; }
+    .btn { padding:16px 28px; border-radius:14px; border:none; font-size:1rem; font-weight:900; cursor:pointer; }
     .play { background:#00f5ff; color:#000; }
     .pause { background:#ff006e; color:#fff; }
-    #statusBox {
-      margin-top:30px; padding:15px 30px;
-      background:#0d1117; border:1px solid #00f5ff33;
-      border-radius:12px; color:#4a5568; font-size:0.9rem;
-    }
+    .restart { background:#7b2fff; color:#fff; }
+
+    .section-title { color:#4a5568; font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:12px; width:100%; max-width:500px; }
+    .video-list { width:100%; max-width:500px; margin-bottom:15px; }
+    .video-item { display:flex; align-items:center; gap:10px; background:#0d1117; border:1px solid rgba(0,245,255,0.1); border-radius:12px; padding:12px 15px; margin-bottom:8px; cursor:pointer; transition:all 0.2s; }
+    .video-item:hover { border-color:rgba(0,245,255,0.4); }
+    .video-item.active { border-color:#00f5ff; background:rgba(0,245,255,0.08); }
+    .video-num { width:28px; height:28px; border-radius:50%; background:rgba(0,245,255,0.1); color:#00f5ff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.8rem; flex-shrink:0; }
+    .video-item.active .video-num { background:#00f5ff; color:#000; }
+    .video-name { flex:1; font-size:0.9rem; }
+    .video-play-btn { padding:6px 14px; background:#00f5ff; color:#000; border:none; border-radius:8px; font-size:0.8rem; font-weight:700; cursor:pointer; }
+
+    .add-box { width:100%; max-width:500px; background:#0d1117; border:1px dashed rgba(0,245,255,0.2); border-radius:12px; padding:18px; margin-bottom:20px; }
+    .add-label { color:#4a5568; font-size:0.8rem; margin-bottom:10px; }
+    .add-box input { width:100%; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(0,245,255,0.2); border-radius:8px; color:#fff; font-size:0.9rem; margin-bottom:8px; direction:ltr; }
+    .add-box input:focus { outline:none; border-color:#00f5ff; }
+    .add-box input::placeholder { color:#4a5568; }
+    .add-row { display:flex; gap:8px; }
+    .add-row input { flex:1; margin-bottom:0; }
+    .add-btn { padding:10px 18px; background:#7b2fff; color:#fff; border:none; border-radius:8px; font-size:0.9rem; font-weight:700; cursor:pointer; }
+
+    #statusBox { padding:12px 25px; background:#0d1117; border:1px solid rgba(0,245,255,0.15); border-radius:12px; color:#4a5568; font-size:0.85rem; text-align:center; width:100%; max-width:500px; }
   </style>
 </head>
 <body>
   <h1>🎮 لوحة التحكم</h1>
   <p class="sub">بتتحكم في كل الأجهزة من هنا</p>
-  <button class="btn play" onclick="sendPlay()">▶ شغّل الكل</button>
-  <button class="btn pause" onclick="sendPause()">⏸ وقّف الكل</button>
-  <div id="statusBox">متصل بالسيرفر ✓</div>
-  <script>
-    const socket = io();
-    function sendPlay() {
-      socket.emit('play');
-      document.getElementById('statusBox').textContent = '▶ تم إرسال أمر التشغيل';
-    }
-    function sendPause() {
-      socket.emit('pause');
-      document.getElementById('statusBox').textContent = '⏸ تم إرسال أمر الإيقاف';
-    }
-  </script>
-</body>
-</html>      margin-top:20px; padding:15px 30px;
-      background:#0d1117; border:1px solid #00f5ff33;
-      border-radius:12px; color:#4a5568; font-size:0.9rem;
-    }
-  </style>
-</head>
-<body>
-  <h1>🎮 لوحة التحكم</h1>
-  <p class="sub">ارفع الفيديو وتحكم في الكل</p>
 
-  <div class="upload-box">
-    <div>🎬 ارفع الفيديو هنا</div>
-    <input type="file" id="fileInput" accept="video/*">
-    <br>
-    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">اختار الفيديو</button>
-    <button class="upload-btn" onclick="uploadVideo()" style="background:#00f5ff;color:#000;margin-right:10px">رفع ⬆</button>
-    <div id="progress"></div>
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-num green" id="viewerCount">0</div>
+      <div class="stat-label">جهاز متصل</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num cyan" id="statusIndicator">⏸</div>
+      <div class="stat-label">الحالة</div>
+    </div>
   </div>
 
-  <button class="btn play" onclick="sendPlay()">▶ شغّل الكل</button>
-  <button class="btn pause" onclick="sendPause()">⏸ وقّف الكل</button>
+  <!-- TIMER -->
+  <div class="timer-box">
+    <div class="timer-display" id="timerDisplay">00:00:00</div>
+    <div class="timer-label">⏱ التايمر المتزامن</div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="main-controls">
+    <button class="btn play" onclick="sendPlay()">▶ شغّل الكل</button>
+    <button class="btn pause" onclick="sendPause()">⏸ وقّف الكل</button>
+    <button class="btn restart" onclick="sendRestart()">🔄 من الأول</button>
+  </div>
+
+  <!-- VIDEOS -->
+  <div class="section-title">📹 قائمة الفيديوهات</div>
+  <div class="video-list" id="videoList"></div>
+
+  <!-- ADD VIDEO -->
+  <div class="add-box">
+    <div class="add-label">➕ إضافة فيديو جديد</div>
+    <input type="text" id="videoName" placeholder="اسم الفيديو" />
+    <div class="add-row">
+      <input type="text" id="videoUrl" placeholder="https://res.cloudinary.com/..." />
+      <button class="add-btn" onclick="addVideo()">إضافة</button>
+    </div>
+  </div>
 
   <div id="statusBox">متصل بالسيرفر ✓</div>
 
   <script>
     const socket = io();
+    let currentVideo = 0;
+    let isPlaying = false;
+    let startedAt = null;
+    let pausedAt = 0;
+    let timerInterval = null;
 
-    function uploadVideo() {
-      const file = document.getElementById('fileInput').files[0];
-      if (!file) return alert('اختار فيديو الأول!');
-      const formData = new FormData();
-      formData.append('video', file);
-      document.getElementById('progress').textContent = 'جاري الرفع...';
-      fetch('/upload', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(() => {
-          document.getElementById('progress').textContent = '✅ تم الرفع!';
-          socket.emit('videoReady');
-        });
+    let videos = [
+      {
+        name: 'جولة المعبد',
+        url: 'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4'
+      }
+    ];
+
+    socket.on('viewers', (count) => {
+      document.getElementById('viewerCount').textContent = count;
+    });
+
+    socket.on('state', (data) => {
+      isPlaying = data.playing;
+      startedAt = data.startedAt;
+      pausedAt = data.pausedAt || 0;
+      if (!isPlaying) updateTimerDisplay(pausedAt);
+    });
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (!isPlaying || !startedAt) return;
+        const elapsed = (Date.now() - startedAt) / 1000;
+        updateTimerDisplay(elapsed);
+      }, 100);
+    }
+
+    function updateTimerDisplay(seconds) {
+      if (seconds < 0) seconds = 0;
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = Math.floor(seconds % 60);
+      document.getElementById('timerDisplay').textContent =
+        String(h).padStart(2,'0') + ':' +
+        String(m).padStart(2,'0') + ':' +
+        String(s).padStart(2,'0');
     }
 
     function sendPlay() {
-      socket.emit('play');
+      socket.emit('play', { videoUrl: videos[currentVideo]?.url });
+      isPlaying = true;
+      startedAt = Date.now() - (pausedAt * 1000);
+      document.getElementById('statusIndicator').textContent = '▶';
+      startTimer();
       document.getElementById('statusBox').textContent = '▶ تم إرسال أمر التشغيل';
     }
 
     function sendPause() {
+      if (startedAt) pausedAt = (Date.now() - startedAt) / 1000;
+      isPlaying = false;
       socket.emit('pause');
+      document.getElementById('statusIndicator').textContent = '⏸';
       document.getElementById('statusBox').textContent = '⏸ تم إرسال أمر الإيقاف';
     }
+
+    function sendRestart() {
+      socket.emit('restart', { videoUrl: videos[currentVideo]?.url });
+      isPlaying = true;
+      pausedAt = 0;
+      startedAt = Date.now();
+      document.getElementById('statusIndicator').textContent = '▶';
+      startTimer();
+      document.getElementById('statusBox').textContent = '🔄 من الأول';
+    }
+
+    function selectVideo(i) {
+      currentVideo = i;
+      renderVideos();
+      socket.emit('changeVideo', { videoUrl: videos[i].url });
+      pausedAt = 0;
+      startedAt = null;
+      isPlaying = false;
+      updateTimerDisplay(0);
+      document.getElementById('statusIndicator').textContent = '⏸';
+      document.getElementById('statusBox').textContent = 'تم اختيار: ' + videos[i].name;
+    }
+
+    function selectAndPlay(i) {
+      currentVideo = i;
+      renderVideos();
+      pausedAt = 0;
+      startedAt = Date.now();
+      isPlaying = true;
+      socket.emit('restart', { videoUrl: videos[i].url });
+      document.getElementById('statusIndicator').textContent = '▶';
+      startTimer();
+      document.getElementById('statusBox').textContent = '▶ شغّال: ' + videos[i].name;
+    }
+
+    function addVideo() {
+      const name = document.getElementById('videoName').value.trim();
+      const url = document.getElementById('videoUrl').value.trim();
+      if (!name || !url) return alert('حط اسم ورابط!');
+      videos.push({ name, url });
+      document.getElementById('videoName').value = '';
+      document.getElementById('videoUrl').value = '';
+      renderVideos();
+      document.getElementById('statusBox').textContent = 'تم إضافة: ' + name;
+    }
+
+    function renderVideos() {
+      const list = document.getElementById('videoList');
+      if (videos.length === 0) {
+        list.innerHTML = '<div style="color:#4a5568;text-align:center;padding:15px;font-size:0.85rem">مفيش فيديوهات لسه</div>';
+        return;
+      }
+      list.innerHTML = videos.map((v, i) => `
+        <div class="video-item ${i === currentVideo ? 'active' : ''}" onclick="selectVideo(${i})">
+          <div class="video-num">${i + 1}</div>
+          <div class="video-name">${v.name}</div>
+          <button class="video-play-btn" onclick="event.stopPropagation(); selectAndPlay(${i})">▶ شغّل</button>
+        </div>
+      `).join('');
+    }
+
+    renderVideos();
+    startTimer();
   </script>
 </body>
 </html>
-```
-
----
-
-وبدّل `src` في `public/index.html` من Google Drive لـ:
-```
-src="/videos/video.mp4"
