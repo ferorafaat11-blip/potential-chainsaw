@@ -2,18 +2,19 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>VR 360</title>
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:#000; }
+    body { background:#000; overflow:hidden; }
+
     #waitScreen {
       position:fixed; inset:0; background:#050810;
       display:flex; flex-direction:column;
       align-items:center; justify-content:center;
-      z-index:999; color:#fff;
+      z-index:9999; color:#fff;
     }
     .logo { font-size:2rem; font-weight:900; color:#00f5ff; margin-bottom:10px; }
     .wait-text { color:#4a5568; font-size:0.9rem; margin-bottom:30px; }
@@ -22,6 +23,16 @@
       0%,100% { box-shadow:0 0 0 0 rgba(0,245,255,0.4); transform:scale(1); }
       50% { box-shadow:0 0 0 20px rgba(0,245,255,0); transform:scale(1.05); }
     }
+
+    /* زرار VR يدوي لو الأوتوماتيك مش اشتغل */
+    #vrBtn {
+      position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+      z-index:9998; display:none;
+      padding:14px 35px; background:#00f5ff; color:#000;
+      font-size:1.1rem; font-weight:900; border:none; border-radius:50px;
+      cursor:pointer; box-shadow:0 0 20px rgba(0,245,255,0.5);
+    }
+
     a-scene { width:100vw; height:100vh; }
   </style>
 </head>
@@ -33,21 +44,25 @@
   <div class="pulse"></div>
 </div>
 
-<a-scene id="scene" vr-mode-ui="enabled:true" style="display:none">
-  <a-assets id="assets">
-    <video id="video360" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
+<button id="vrBtn" onclick="enterVRManual()">🥽 دخول VR</button>
+
+<a-scene
+  id="scene"
+  vr-mode-ui="enabled:true; cardboardModeEnabled:true"
+  device-orientation-permission-ui="enabled:true"
+  style="display:none">
+
+  <a-assets>
+    <video id="video360" crossorigin="anonymous" loop playsinline webkit-playsinline muted></video>
   </a-assets>
 
-  <!-- فيديو 360 -->
   <a-videosphere id="videoSphere" src="#video360" rotation="0 180 0" visible="false"></a-videosphere>
-
-  <!-- صورة 360 -->
-  <a-sky id="imageSky" src="" visible="false"></a-sky>
-
-  <!-- صورة عادية (لوحة في الوسط) -->
+  <a-sky id="imageSky" src="" visible="false" radius="100"></a-sky>
   <a-image id="imagePanel" src="" width="3" height="2" position="0 1.6 -3" visible="false"></a-image>
 
-  <a-camera><a-cursor color="#00f5ff"></a-cursor></a-camera>
+  <a-camera look-controls="pointerLockEnabled:false" wasd-controls="enabled:false">
+    <a-cursor color="#00f5ff" fuse="false"></a-cursor>
+  </a-camera>
 </a-scene>
 
 <script>
@@ -56,18 +71,56 @@
   const videoSphere = document.getElementById('videoSphere');
   const imageSky = document.getElementById('imageSky');
   const imagePanel = document.getElementById('imagePanel');
+  const vrBtn = document.getElementById('vrBtn');
   const socket = io();
   let sceneStarted = false;
-  let currentType = null;
 
   function showScene() {
-    if (!sceneStarted) {
-      sceneStarted = true;
-      document.getElementById('waitScreen').style.display = 'none';
-      scene.style.display = 'block';
-      setTimeout(() => scene.enterVR(), 800);
+    if (sceneStarted) return;
+    sceneStarted = true;
+    document.getElementById('waitScreen').style.display = 'none';
+    scene.style.display = 'block';
+
+    // انتظر A-Frame يجهّز نفسه
+    scene.addEventListener('loaded', () => {
+      tryEnterVR();
+    });
+
+    // لو loaded اتأخر
+    setTimeout(tryEnterVR, 1500);
+  }
+
+  function tryEnterVR() {
+    if (scene.is('vr-mode')) return;
+
+    // جرب enterVR
+    const entered = scene.enterVR();
+    if (entered && entered.then) {
+      entered.then(() => {
+        vrBtn.style.display = 'none';
+      }).catch(() => {
+        // لو فشل اعرض الزرار اليدوي
+        vrBtn.style.display = 'block';
+      });
+    } else {
+      // مش promise — اعرض الزرار كـ fallback
+      setTimeout(() => {
+        if (!scene.is('vr-mode')) vrBtn.style.display = 'block';
+      }, 1000);
     }
   }
+
+  function enterVRManual() {
+    vrBtn.style.display = 'none';
+    scene.enterVR();
+  }
+
+  // لو خرج من VR خليه يرجع
+  scene.addEventListener('exit-vr', () => {
+    setTimeout(() => {
+      if (!scene.is('vr-mode')) vrBtn.style.display = 'block';
+    }, 500);
+  });
 
   function hideAll() {
     videoSphere.setAttribute('visible', false);
@@ -80,18 +133,19 @@
     if (!data.url) return;
     showScene();
     hideAll();
-    currentType = data.type;
 
     if (data.type === 'video') {
-      if (video.getAttribute('src') !== data.url) {
-        video.setAttribute('src', data.url);
+      if (video.src !== data.url) {
+        video.src = data.url;
         video.load();
       }
       videoSphere.setAttribute('visible', true);
+      // unmute بعد تفاعل المستخدم
+      video.muted = false;
       if (data.playing && data.startedAt) {
         const elapsed = (Date.now() - data.startedAt) / 1000;
         video.currentTime = Math.max(0, elapsed);
-        video.play().catch(() => {});
+        video.play().catch(() => { video.muted = true; video.play(); });
       } else {
         if (data.pausedAt) video.currentTime = data.pausedAt;
         video.pause();
@@ -109,133 +163,6 @@
 
   socket.on('state', handleState);
   socket.on('sync', handleState);
-</script>
-</body>
-</html>
-      padding:8px 24px; border-radius:50px;
-      font-size:1.3rem; font-family:monospace; font-weight:900;
-      display:none; z-index:100; letter-spacing:3px;
-      text-shadow:0 0 10px rgba(0,245,255,0.5);
-    }
-
-    a-scene { width:100vw; height:100vh; }
-  </style>
-</head>
-<body>
-
-<div id="startScreen">
-  <div class="logo">🥽 VR 360</div>
-  <div class="sub">اضغط للبدء</div>
-  <button class="start-btn" onclick="startNormal()">▶ تشغيل عادي</button>
-  <button class="vr-btn" onclick="startVR()">🥽 وضع VR</button>
-</div>
-
-<div id="timerDisplay">00:00:00</div>
-
-<div id="controls">
-  <button class="btn-restart" onclick="restartVideo()">🔄 من الأول</button>
-  <button class="btn-vr" onclick="enterVR()">🥽 VR</button>
-</div>
-
-<a-scene id="scene" vr-mode-ui="enabled:true" style="display:none">
-  <a-assets>
-    <video id="video360"
-      src="https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4"
-      crossorigin="anonymous" loop playsinline webkit-playsinline>
-    </video>
-  </a-assets>
-  <a-videosphere src="#video360" rotation="0 180 0"></a-videosphere>
-  <a-camera><a-cursor color="#00f5ff"></a-cursor></a-camera>
-</a-scene>
-
-<script>
-  const video = document.getElementById('video360');
-  const scene = document.getElementById('scene');
-  const timerEl = document.getElementById('timerDisplay');
-  const controls = document.getElementById('controls');
-  const socket = io();
-  let started = false;
-  let timerInterval = null;
-
-  socket.on('state', (data) => {
-    if (!started) return;
-
-    // غيّر الفيديو لو اتغير
-    if (data.videoUrl && video.getAttribute('src') !== data.videoUrl) {
-      video.setAttribute('src', data.videoUrl);
-      video.load();
-    }
-
-    if (data.playing && data.startedAt) {
-      // حساب الوقت الصح بناءً على السيرفر
-      const serverNow = data.serverTime || Date.now();
-      const clientNow = Date.now();
-      const lag = clientNow - serverNow; // فرق التوقيت
-      const elapsed = (clientNow - data.startedAt + lag) / 1000;
-
-      video.currentTime = Math.max(0, elapsed);
-      video.play();
-      startTimer(data.startedAt, data.serverTime);
-    } else {
-      video.pause();
-      if (data.pausedAt !== undefined) {
-        video.currentTime = data.pausedAt;
-        updateTimerDisplay(data.pausedAt);
-      }
-      clearInterval(timerInterval);
-    }
-  });
-
-  function startTimer(startedAt, serverTime) {
-    clearInterval(timerInterval);
-    const lag = Date.now() - (serverTime || Date.now());
-    timerInterval = setInterval(() => {
-      const elapsed = (Date.now() - startedAt + lag) / 1000;
-      updateTimerDisplay(elapsed);
-    }, 100);
-  }
-
-  function updateTimerDisplay(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    timerEl.textContent =
-      String(h).padStart(2,'0') + ':' +
-      String(m).padStart(2,'0') + ':' +
-      String(s).padStart(2,'0');
-  }
-
-  function startNormal() {
-    started = true;
-    document.getElementById('startScreen').style.display = 'none';
-    scene.style.display = 'block';
-    timerEl.style.display = 'block';
-    controls.style.display = 'flex';
-  }
-
-  function startVR() {
-    startNormal();
-    setTimeout(() => scene.enterVR(), 500);
-  }
-
-  function restartVideo() {
-    video.currentTime = 0;
-    video.play();
-  }
-
-  function enterVR() {
-    scene.enterVR();
-  }
-
-  scene.addEventListener('enter-vr', () => {
-    controls.style.display = 'none';
-    timerEl.style.display = 'none';
-  });
-
-  scene.addEventListener('exit-vr', () => {
-    controls.style.display = 'flex';
-    timerEl.style.display = 'block';
-  });
 </script>
 </body>
 </html>
