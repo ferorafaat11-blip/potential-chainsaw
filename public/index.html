@@ -67,8 +67,8 @@
 <div id="codeScreen">
   <div class="code-logo">🥽 VR 360</div>
   <div class="code-title">ادخل كود الجلسة</div>
-  <input class="code-input" id="codeInput" type="number" maxlength="2" placeholder="--"
-    oninput="if(this.value.length>2)this.value=this.value.slice(0,2)"
+  <input class="code-input" id="codeInput" type="tel" maxlength="1" placeholder="-"
+    oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,1)"
     onkeydown="if(event.key==='Enter')joinRoom()" />
   <button class="code-btn" onclick="joinRoom()">دخول ←</button>
   <div class="code-error" id="codeError"></div>
@@ -136,7 +136,11 @@
   // ===== دخول الـ Room =====
   function joinRoom() {
     const code = document.getElementById('codeInput').value.trim();
-    if (!code) return;
+    if (!code || code.length !== 1) {
+      document.getElementById('codeError').textContent = 'الكود رقم واحد بس!';
+      setTimeout(() => document.getElementById('codeError').textContent = '', 2000);
+      return;
+    }
     socket.emit('joinRoom', { code });
   }
   socket.on('joinOk', () => {
