@@ -9,8 +9,9 @@ const io = new Server(server);
 app.use(express.static('public'));
 
 let state = {
+  type: 'video',
+  url: '',
   playing: false,
-  videoUrl: 'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4',
   startedAt: null,
   pausedAt: 0,
 };
@@ -28,12 +29,44 @@ io.on('connection', (socket) => {
   });
 
   socket.on('play', (data) => {
-    if (data && data.videoUrl) state.videoUrl = data.videoUrl;
+    if (data && data.url) state.url = data.url;
+    if (data && data.type) state.type = data.type;
     state.playing = true;
     state.startedAt = Date.now() - (state.pausedAt * 1000);
     io.emit('state', { ...state, serverTime: Date.now() });
   });
 
+  socket.on('pause', () => {
+    if (state.startedAt) state.pausedAt = (Date.now() - state.startedAt) / 1000;
+    state.playing = false;
+    io.emit('state', { ...state, serverTime: Date.now() });
+  });
+
+  socket.on('restart', (data) => {
+    if (data && data.url) state.url = data.url;
+    if (data && data.type) state.type = data.type;
+    state.playing = true;
+    state.pausedAt = 0;
+    state.startedAt = Date.now();
+    io.emit('state', { ...state, serverTime: Date.now() });
+  });
+
+  socket.on('show', (data) => {
+    state.url = data.url;
+    state.type = data.type;
+    state.playing = true;
+    state.startedAt = Date.now();
+    state.pausedAt = 0;
+    io.emit('state', { ...state, serverTime: Date.now() });
+  });
+
+  socket.on('syncAll', () => {
+    io.emit('sync', { ...state, serverTime: Date.now() });
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log('Server on port ' + PORT));
   socket.on('pause', () => {
     if (state.startedAt) state.pausedAt = (Date.now() - state.startedAt) / 1000;
     state.playing = false;
