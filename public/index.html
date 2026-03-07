@@ -81,7 +81,7 @@
     الـ offset الثابت 180° موجود لأن الفيديو بيبدأ من الجنوب
     فالمعادلة: rig.y = 180 - degree
   -->
-  <a-entity id="rig" rotation="0 180 0" position="0 0 0">
+  <a-entity id="rig" rotation="0 270 0" position="0 0 0">
     <a-camera id="mainCamera" look-controls wasd-controls="enabled:false">
       <a-cursor color="#00f5ff"></a-cursor>
     </a-camera>
@@ -118,12 +118,12 @@
 
   function setCameraYaw(degree) {
     // offset 180 لأن الـ videosphere بيبدأ من الجنوب بدون rotation
-    // المعادلة: rigY = 180 - degree
-    // 0°  → rigY = 180  → بيبص شمال ✓
-    // 90° → rigY = 90   → بيبص شرق  ✓
-    // 180°→ rigY = 0    → بيبص جنوب ✓
-    // 270°→ rigY = -90  → بيبص غرب  ✓
-    rig.setAttribute('rotation', { x: 0, y: 180 - degree, z: 0 });
+    // offset = 270 لأن الـ default بيبص غرب
+    // 0°  → rigY = 270  → شمال ✓
+    // 90° → rigY = 180  → شرق  ✓
+    // 180°→ rigY = 90   → جنوب ✓
+    // 270°→ rigY = 0    → غرب  ✓
+    rig.setAttribute('rotation', { x: 0, y: 270 - degree, z: 0 });
   }
 
   function applyVolume(video, volume, muted) {
