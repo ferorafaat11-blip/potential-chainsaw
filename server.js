@@ -8,45 +8,55 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-// كل room ليها state خاص بيها
-const rooms = {}; // { "42": { state, viewers } }
+const rooms = {};
 
 function createRoom() {
-  // كود رقمين عشوائي مش موجود
   let code;
   do { code = String(Math.floor(1 + Math.random() * 9)); } while (rooms[code]);
   rooms[code] = {
     code,
+    hostId: null,
     state: { type:'video', url:'', degree:0, playing:false, startedAt:null, pausedAt:0, volume:1, muted:false },
-    viewers: 0,
+    viewers: {}, // { socketId: { id, status } }
   };
   return code;
 }
 
-function getRoomByHost(socketId) {
-  return Object.values(rooms).find(r => r.hostId === socketId);
+function getRoomViewerCount(room) {
+  return Object.keys(room.viewers).length;
+}
+
+function broadcastViewers(room) {
+  const list = Object.values(room.viewers);
+  const count = list.length;
+  io.to('host:' + room.code).emit('viewers', count);
+  io.to('host:' + room.code).emit('viewerList', list);
+}
+
+function broadcastState(room) {
+  io.to('room:' + room.code).emit('state', { ...room.state, serverTime: Date.now() });
+  broadcastViewers(room);
 }
 
 io.on('connection', (socket) => {
 
-  // ===== HOST: إنشاء room =====
-  socket.on('createRoom', () => {
+  // ===== HOST: Room تتعمل أوتوماتيك =====
+  socket.on('initHost', () => {
+    // لو عنده room قديمة امسحها
+    const old = Object.values(rooms).find(r => r.hostId === socket.id);
+    if (old) delete rooms[old.code];
+
     const code = createRoom();
     rooms[code].hostId = socket.id;
     socket.join('host:' + code);
-    socket.emit('roomCreated', { code });
+    socket.emit('roomReady', { code });
   });
 
-  // ===== HOST: أوامر التحكم =====
   function getHostRoom() {
     return Object.values(rooms).find(r => r.hostId === socket.id);
   }
 
-  function broadcastState(room) {
-    io.to('room:' + room.code).emit('state', { ...room.state, serverTime: Date.now() });
-    io.to('host:' + room.code).emit('viewers', room.viewers);
-  }
-
+  // ===== أوامر التحكم =====
   socket.on('play', (data) => {
     const room = getHostRoom(); if (!room) return;
     if (data?.url)    room.state.url    = data.url;
@@ -114,43 +124,51 @@ io.on('connection', (socket) => {
   socket.on('startSession', () => {
     const room = getHostRoom(); if (!room) return;
     io.to('room:' + room.code).emit('sessionStart');
+    // حدّث status كل الأجهزة
+    Object.keys(room.viewers).forEach(id => {
+      if (room.viewers[id]) room.viewers[id].status = 'اختيار وضع';
+    });
+    broadcastViewers(room);
   });
 
   socket.on('stopSession', () => {
     const room = getHostRoom(); if (!room) return;
     room.state.playing = false; room.state.startedAt = null; room.state.pausedAt = 0;
     io.to('room:' + room.code).emit('sessionStop');
+    Object.keys(room.viewers).forEach(id => {
+      if (room.viewers[id]) room.viewers[id].status = 'انتظار';
+    });
+    broadcastViewers(room);
   });
 
-  socket.on('closeRoom', () => {
+  // طرد كل الأجهزة من اللينك
+  socket.on('kickAll', () => {
     const room = getHostRoom(); if (!room) return;
-    io.to('room:' + room.code).emit('sessionStop');
-    delete rooms[room.code];
+    io.to('room:' + room.code).emit('kicked');
   });
 
-  // ===== VIEWER: دخول تلقائي لأول room =====
+  // ===== VIEWER =====
   socket.on('autoJoin', () => {
     const firstRoom = Object.values(rooms)[0];
     if (!firstRoom) { socket.emit('noRoom'); return; }
     const code = firstRoom.code;
     socket.join('room:' + code);
     socket.data.roomCode = code;
-    firstRoom.viewers++;
-    io.to('host:' + code).emit('viewers', firstRoom.viewers);
-    socket.emit('joinOk', { code });
+    const num = getRoomViewerCount(firstRoom) + 1;
+    firstRoom.viewers[socket.id] = { id: socket.id, num, status: 'انتظار' };
+    broadcastViewers(firstRoom);
+    socket.emit('joinOk');
     socket.emit('state', { ...firstRoom.state, serverTime: Date.now() });
   });
 
-  socket.on('joinRoom', (data) => {
-    const code = String(data.code);
-    const room = rooms[code];
-    if (!room) { socket.emit('joinError', { msg: 'كود غلط!' }); return; }
-    socket.join('room:' + code);
-    socket.data.roomCode = code;
-    room.viewers++;
-    io.to('host:' + code).emit('viewers', room.viewers);
-    socket.emit('joinOk', { code });
-    socket.emit('state', { ...room.state, serverTime: Date.now() });
+  // الجهاز بيبعت status update
+  socket.on('statusUpdate', (data) => {
+    const code = socket.data.roomCode; if (!code) return;
+    const room = rooms[code]; if (!room) return;
+    if (room.viewers[socket.id]) {
+      room.viewers[socket.id].status = data.status;
+      broadcastViewers(room);
+    }
   });
 
   socket.on('reportDuration', (data) => {
@@ -159,15 +177,13 @@ io.on('connection', (socket) => {
     io.to('host:' + code).emit('videoDuration', data);
   });
 
-  // ===== Disconnect =====
   socket.on('disconnect', () => {
     const code = socket.data.roomCode;
     if (code && rooms[code]) {
-      rooms[code].viewers = Math.max(0, rooms[code].viewers - 1);
-      io.to('host:' + code).emit('viewers', rooms[code].viewers);
+      delete rooms[code].viewers[socket.id];
+      broadcastViewers(rooms[code]);
     }
-    // لو المضيف اتفصل
-    const room = getRoomByHost(socket.id);
+    const room = Object.values(rooms).find(r => r.hostId === socket.id);
     if (room) {
       io.to('room:' + room.code).emit('sessionStop');
       delete rooms[room.code];
