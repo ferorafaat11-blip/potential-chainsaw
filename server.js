@@ -128,7 +128,19 @@ io.on('connection', (socket) => {
     delete rooms[room.code];
   });
 
-  // ===== VIEWER: دخول room =====
+  // ===== VIEWER: دخول تلقائي لأول room =====
+  socket.on('autoJoin', () => {
+    const firstRoom = Object.values(rooms)[0];
+    if (!firstRoom) { socket.emit('noRoom'); return; }
+    const code = firstRoom.code;
+    socket.join('room:' + code);
+    socket.data.roomCode = code;
+    firstRoom.viewers++;
+    io.to('host:' + code).emit('viewers', firstRoom.viewers);
+    socket.emit('joinOk', { code });
+    socket.emit('state', { ...firstRoom.state, serverTime: Date.now() });
+  });
+
   socket.on('joinRoom', (data) => {
     const code = String(data.code);
     const room = rooms[code];
