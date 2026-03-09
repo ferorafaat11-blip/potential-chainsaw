@@ -1,430 +1,244 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VR Control</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>VR 360</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    :root {
-      --bg:#060a12; --surface:#0d1520; --surface2:#111d2e;
-      --border:rgba(0,210,255,0.12); --accent:#00d2ff; --accent2:#7b2fff;
-      --danger:#ff2d6b; --warn:#f5a623; --text:#e8f4ff; --muted:#3d5a7a;
-      --green:#22c55e;
-    }
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:var(--bg); color:var(--text); font-family:'Tajawal',sans-serif; height:100vh; overflow:hidden; display:flex; flex-direction:column; }
-    body::before { content:''; position:fixed; inset:0; z-index:0; background: radial-gradient(ellipse 60% 40% at 80% 20%, rgba(0,210,255,0.06) 0%, transparent 60%), radial-gradient(ellipse 40% 60% at 10% 80%, rgba(123,47,255,0.05) 0%, transparent 60%); pointer-events:none; }
-
-    /* HEADER */
-    .header { position:relative; z-index:10; display:flex; align-items:center; justify-content:space-between; padding:10px 20px; border-bottom:1px solid var(--border); background:rgba(6,10,18,0.9); backdrop-filter:blur(20px); flex-shrink:0; gap:12px; }
-    .logo-text { font-family:'Space Mono',monospace; font-size:0.85rem; color:var(--accent); letter-spacing:3px; }
-    .header-mid { display:flex; align-items:center; gap:10px; flex:1; justify-content:center; }
-    .room-pill { display:flex; align-items:center; gap:8px; padding:5px 16px; border-radius:20px; background:rgba(0,210,255,0.08); border:1px solid rgba(0,210,255,0.25); }
-    .room-label { font-size:0.65rem; color:var(--muted); font-family:'Space Mono',monospace; }
-    .room-code { font-size:1.4rem; font-weight:700; color:var(--accent); font-family:'Space Mono',monospace; letter-spacing:8px; text-shadow:0 0 15px rgba(0,210,255,0.5); min-width:30px; }
-    .stat-pill { display:flex; align-items:center; gap:5px; padding:4px 10px; border-radius:16px; background:var(--surface2); border:1px solid var(--border); font-size:0.75rem; font-family:'Space Mono',monospace; }
-    .dot { width:6px; height:6px; border-radius:50%; }
-    .dot.green { background:var(--green); box-shadow:0 0 6px var(--green); animation:blink 2s infinite; }
-    @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.3} }
-    .header-actions { display:flex; gap:6px; }
-    .hbtn { padding:5px 12px; border-radius:16px; border:none; font-size:0.75rem; font-weight:900; cursor:pointer; font-family:'Tajawal',sans-serif; transition:all 0.15s; }
-    .hbtn:active { transform:scale(0.95); }
-    .hbtn.start  { background:var(--green); color:#000; }
-    .hbtn.stop   { background:var(--danger); color:#fff; }
-    .hbtn.kick   { background:rgba(255,45,107,0.15); color:var(--danger); border:1px solid rgba(255,45,107,0.3); }
-    .hbtn.kick:hover { background:var(--danger); color:#fff; }
-
-    /* MAIN */
-    .main { position:relative; z-index:5; display:grid; grid-template-columns:1fr 300px; grid-template-rows:auto 1fr auto; gap:10px; padding:10px; flex:1; overflow:hidden; min-height:0; }
-
-    /* TIMER */
-    .timer-panel { grid-column:1; grid-row:1; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:16px; }
-    .timer-display { font-family:'Space Mono',monospace; font-size:2.2rem; font-weight:700; color:var(--accent); text-shadow:0 0 20px rgba(0,210,255,0.4); letter-spacing:3px; min-width:160px; }
-    .timer-controls { flex:1; display:flex; flex-direction:column; gap:7px; }
-    .seek-row { display:flex; align-items:center; gap:6px; }
-    .seek-slider { flex:1; height:4px; accent-color:var(--accent); cursor:pointer; border-radius:2px; }
-    .seek-lbl { font-family:'Space Mono',monospace; font-size:0.65rem; color:var(--muted); min-width:36px; }
-    .manual-row { display:flex; gap:5px; }
-    .mini-input { flex:1; padding:5px 8px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.78rem; direction:ltr; text-align:center; }
-    .mini-input:focus { outline:none; border-color:var(--accent); }
-    .mini-input::placeholder { color:var(--muted); }
-    .mini-btn { padding:5px 10px; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer; font-family:'Tajawal',sans-serif; }
-    .mini-btn.p { background:var(--accent2); color:#fff; }
-
-    /* CONTROLS */
-    .controls-panel { grid-column:1; grid-row:2; display:flex; flex-direction:column; gap:8px; min-height:0; }
-    .transport { display:flex; gap:7px; flex-wrap:wrap; }
-    .tbtn { flex:1; min-width:70px; padding:9px 6px; border:none; border-radius:9px; font-size:0.82rem; font-weight:900; cursor:pointer; transition:all 0.15s; font-family:'Tajawal',sans-serif; }
-    .tbtn:active { transform:scale(0.95); }
-    .t-play{background:var(--accent);color:#000;} .t-pause{background:var(--danger);color:#fff;}
-    .t-restart{background:var(--accent2);color:#fff;} .t-sync{background:var(--warn);color:#000;}
-    .t-sync.flash { animation:flash 0.4s; }
-    @keyframes flash{0%,100%{opacity:1}50%{opacity:0.2}}
-
-    .vol-panel { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:9px 14px; display:flex; align-items:center; gap:10px; }
-    .vol-lbl { font-size:0.72rem; color:var(--muted); }
-    .vol-slider { flex:1; accent-color:var(--accent); cursor:pointer; }
-    .vol-val { font-family:'Space Mono',monospace; font-size:0.72rem; color:var(--accent); min-width:34px; text-align:center; }
-    .mute-btn { padding:4px 9px; border-radius:6px; border:1px solid rgba(255,45,107,0.3); background:rgba(255,45,107,0.1); color:var(--danger); font-size:0.72rem; font-weight:700; cursor:pointer; font-family:'Tajawal',sans-serif; }
-    .mute-btn.muted { background:var(--danger); color:#fff; }
-
-    .media-panel { background:var(--surface); border:1px solid var(--border); border-radius:9px; flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden; }
-    .panel-hdr { padding:8px 12px; border-bottom:1px solid var(--border); font-size:0.68rem; letter-spacing:2px; color:var(--muted); font-family:'Space Mono',monospace; flex-shrink:0; }
-    .media-scroll { flex:1; overflow-y:auto; padding:6px; }
-    .media-scroll::-webkit-scrollbar{width:3px;} .media-scroll::-webkit-scrollbar-thumb{background:var(--border);}
-    .media-item { display:flex; align-items:center; gap:7px; padding:7px 9px; border-radius:7px; border:1px solid transparent; margin-bottom:3px; transition:all 0.15s; }
-    .media-item:hover{background:var(--surface2);border-color:var(--border);}
-    .media-item.active{background:rgba(0,210,255,0.07);border-color:rgba(0,210,255,0.3);}
-    .micon{font-size:1rem;flex-shrink:0;}
-    .minfo{flex:1;min-width:0;}
-    .mname{font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .mmeta{font-size:0.62rem;color:var(--muted);margin-top:1px;display:flex;gap:5px;}
-    .macts{display:flex;gap:3px;flex-shrink:0;}
-    .play-btn{padding:3px 9px;background:var(--accent);color:#000;border:none;border-radius:5px;font-size:0.7rem;font-weight:700;cursor:pointer;}
-    .del-btn{padding:3px 6px;background:rgba(255,45,107,0.1);color:var(--danger);border:1px solid rgba(255,45,107,0.2);border-radius:5px;font-size:0.7rem;cursor:pointer;}
-
-    /* STATUS */
-    .status-bar { grid-column:1; grid-row:3; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:6px 12px; font-size:0.72rem; color:var(--muted); font-family:'Space Mono',monospace; display:flex; align-items:center; gap:6px; }
-
-    /* RIGHT PANEL */
-    .right-col { grid-column:2; grid-row:1/4; display:flex; flex-direction:column; gap:8px; min-height:0; }
-
-    /* VIEWERS PANEL */
-    .viewers-panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; display:flex; flex-direction:column; min-height:0; flex:1; overflow:hidden; }
-    .viewer-item { display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid rgba(0,210,255,0.05); }
-    .viewer-num { width:22px; height:22px; border-radius:50%; background:var(--surface2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-family:'Space Mono',monospace; color:var(--muted); flex-shrink:0; }
-    .viewer-status { flex:1; font-size:0.75rem; }
-    .status-badge { padding:2px 8px; border-radius:10px; font-size:0.65rem; font-weight:700; display:inline-block; }
-    .sb-wait   { background:rgba(61,90,122,0.3); color:var(--muted); }
-    .sb-choose { background:rgba(245,166,35,0.2); color:var(--warn); }
-    .sb-normal { background:rgba(34,197,94,0.2); color:var(--green); }
-    .sb-vr     { background:rgba(0,210,255,0.15); color:var(--accent); }
-    .no-viewers { color:var(--muted); font-size:0.78rem; text-align:center; padding:20px; }
-
-    /* ADD PANEL */
-    .add-panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; display:flex; flex-direction:column; overflow:hidden; flex-shrink:0; }
-    .add-form { overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:8px; }
-    .add-form::-webkit-scrollbar{width:3px;} .add-form::-webkit-scrollbar-thumb{background:var(--border);}
-    .flabel { font-size:0.65rem; color:var(--muted); letter-spacing:1px; margin-bottom:3px; font-family:'Space Mono',monospace; }
-    .finput { width:100%; padding:7px 9px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.8rem; direction:ltr; }
-    .finput.rtl { direction:rtl; }
-    .finput:focus { outline:none; border-color:var(--accent); }
-    .finput::placeholder { color:var(--muted); }
-    .type-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
-    .type-btn { padding:6px 3px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); font-size:0.7rem; cursor:pointer; text-align:center; font-family:'Tajawal',sans-serif; }
-    .type-btn.selected { border-color:var(--accent); color:var(--accent); background:rgba(0,210,255,0.08); }
-    .dir-grid { display:grid; grid-template-columns:1fr 1fr; gap:3px; margin-bottom:5px; }
-    .dir-btn { padding:4px; border-radius:5px; border:1px solid var(--border); background:transparent; color:var(--muted); font-size:0.65rem; cursor:pointer; font-family:'Tajawal',sans-serif; }
-    .dir-btn:hover { border-color:var(--accent); color:var(--accent); }
-    .dir-row { display:flex; align-items:center; gap:5px; }
-    .dir-slider { flex:1; accent-color:var(--accent); }
-    .dir-val { font-family:'Space Mono',monospace; font-size:0.68rem; color:var(--accent); min-width:28px; }
-    .add-submit { width:100%; padding:9px; background:linear-gradient(135deg,var(--accent2),#5a1fd1); color:#fff; border:none; border-radius:7px; font-size:0.85rem; font-weight:900; cursor:pointer; font-family:'Tajawal',sans-serif; }
+    body { background:#000; overflow:hidden; }
+    #waitScreen {
+      position:fixed; inset:0; background:#050810;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      z-index:9999; color:#fff;
+    }
+    .logo { font-size:2rem; font-weight:900; color:#00f5ff; margin-bottom:10px; }
+    .wait-text { color:#4a5568; font-size:0.9rem; margin-bottom:30px; }
+    .pulse { width:60px; height:60px; border-radius:50%; background:rgba(0,245,255,0.1); border:2px solid #00f5ff; animation:pulse 1.5s infinite; }
+    @keyframes pulse {
+      0%,100%{box-shadow:0 0 0 0 rgba(0,245,255,0.4);transform:scale(1);}
+      50%{box-shadow:0 0 0 20px rgba(0,245,255,0);transform:scale(1.05);}
+    }
+    #modeScreen {
+      display:none; position:fixed; inset:0; background:#050810;
+      flex-direction:column; align-items:center; justify-content:center;
+      z-index:9998; gap:20px;
+    }
+    .mode-title { color:#fff; font-size:1.3rem; font-weight:700; margin-bottom:10px; }
+    .mode-btn { width:260px; padding:18px; border:none; border-radius:16px; font-size:1.1rem; font-weight:900; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .mode-normal { background:#fff; color:#000; }
+    .mode-vr { background:#00f5ff; color:#000; }
+    .mode-desc { font-size:0.75rem; font-weight:400; opacity:0.6; }
+    #switchBtn {
+      display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+      z-index:9997; padding:10px 22px; background:rgba(0,0,0,0.6); color:#fff;
+      border:1px solid rgba(255,255,255,0.3); font-size:0.85rem; font-weight:700;
+      border-radius:50px; cursor:pointer; backdrop-filter:blur(10px);
+    }
+    a-scene { width:100vw; height:100vh; }
   </style>
 </head>
 <body>
 
-<div class="header">
-  <span class="logo-text">🥽 VR</span>
-  <div class="header-mid">
-    <div class="room-pill">
-      <span class="room-label">ROOM</span>
-      <span class="room-code" id="roomCode">…</span>
-    </div>
-    <div class="stat-pill">
-      <div class="dot green"></div>
-      <span id="viewerCount">0</span> جهاز
-    </div>
-  </div>
-  <div class="header-actions">
-    <button class="hbtn start" onclick="startSession()">▶ ابدأ</button>
-    <button class="hbtn stop"  onclick="stopSession()">⏹ وقّف</button>
-    <button class="hbtn kick"  onclick="kickAll()">🚪 أخرج الكل</button>
-  </div>
+<div id="waitScreen">
+  <div class="logo">🥽 VR 360</div>
+  <div class="wait-text">في انتظار المضيف...</div>
+  <div class="pulse"></div>
 </div>
 
-<div class="main">
-
-  <!-- TIMER -->
-  <div class="timer-panel">
-    <div class="timer-display" id="timerDisplay">00:00:00</div>
-    <div class="timer-controls">
-      <div class="seek-row">
-        <span class="seek-lbl">00:00</span>
-        <input type="range" class="seek-slider" id="seekSlider" min="0" max="100" value="0"
-          oninput="seekSliderMove(this.value)" onchange="seekSliderDrop(this.value)">
-        <span class="seek-lbl" id="seekEnd">00:00</span>
-      </div>
-      <div class="manual-row">
-        <input class="mini-input" id="seekInput" placeholder="1:30 أو 90" />
-        <button class="mini-btn p" onclick="seekManual()">⏩ اجمب</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- CONTROLS -->
-  <div class="controls-panel">
-    <div class="transport">
-      <button class="tbtn t-play"    onclick="sendPlay()">▶ شغّل</button>
-      <button class="tbtn t-pause"   onclick="sendPause()">⏸ وقّف</button>
-      <button class="tbtn t-restart" onclick="sendRestart()">🔄 أول</button>
-      <button class="tbtn t-sync" id="syncBtn" onclick="sendSync()">⚡ Sync</button>
-    </div>
-    <div class="vol-panel">
-      <span class="vol-lbl">🔊</span>
-      <input type="range" class="vol-slider" id="volSlider" min="0" max="100" value="100" oninput="setVolume(this.value)">
-      <span class="vol-val" id="volVal">100%</span>
-      <button class="mute-btn" id="muteBtn" onclick="toggleMute()">🔇 كتم</button>
-    </div>
-    <div class="media-panel">
-      <div class="panel-hdr">📁 المحتوى</div>
-      <div class="media-scroll" id="mediaList"></div>
-    </div>
-  </div>
-
-  <!-- STATUS -->
-  <div class="status-bar">
-    <div class="dot" style="background:var(--accent)"></div>
-    <span id="statusBox">جارٍ الاتصال…</span>
-  </div>
-
-  <!-- RIGHT -->
-  <div class="right-col">
-
-    <!-- VIEWERS -->
-    <div class="viewers-panel">
-      <div class="panel-hdr">👥 الأجهزة المتصلة</div>
-      <div class="media-scroll" id="viewerList"></div>
-    </div>
-
-    <!-- ADD -->
-    <div class="add-panel">
-      <div class="panel-hdr">➕ إضافة محتوى</div>
-      <div class="add-form">
-        <div>
-          <div class="flabel">النوع</div>
-          <div class="type-grid">
-            <button class="type-btn selected" id="t_video"     onclick="selectType('video')">🌐 360°</button>
-            <button class="type-btn"          id="t_videoFlat" onclick="selectType('videoFlat')">🎬 عادي</button>
-            <button class="type-btn"          id="t_image"     onclick="selectType('image')">🖼️ صورة</button>
-            <button class="type-btn"          id="t_image360"  onclick="selectType('image360')">🌐 صورة360</button>
-          </div>
-        </div>
-        <div>
-          <div class="flabel">الاسم</div>
-          <input class="finput rtl" id="mediaName" placeholder="اسم المحتوى" />
-        </div>
-        <div>
-          <div class="flabel">الرابط</div>
-          <input class="finput" id="mediaUrl" placeholder="https://..." />
-        </div>
-        <div>
-          <div class="flabel">🧭 الاتجاه — <span id="degreeVal" style="color:var(--accent)">0°</span></div>
-          <div class="dir-grid">
-            <button class="dir-btn" onclick="setDegree(0)">⬆️ شمال</button>
-            <button class="dir-btn" onclick="setDegree(90)">➡️ شرق</button>
-            <button class="dir-btn" onclick="setDegree(180)">⬇️ جنوب</button>
-            <button class="dir-btn" onclick="setDegree(270)">⬅️ غرب</button>
-          </div>
-          <div class="dir-row">
-            <input type="range" class="dir-slider" id="degSlider" min="0" max="359" value="0" oninput="setDegree(parseInt(this.value))">
-            <span class="dir-val" id="degSliderVal">0°</span>
-          </div>
-        </div>
-        <button class="add-submit" onclick="addMedia()">➕ إضافة</button>
-      </div>
-    </div>
-
-  </div>
+<div id="modeScreen">
+  <div class="mode-title">اختار وضع العرض</div>
+  <button class="mode-btn mode-normal" onclick="startMode('normal')">📱 وضع عادي<span class="mode-desc">شاشة واحدة</span></button>
+  <button class="mode-btn mode-vr" onclick="startMode('vr')">🥽 وضع VR<span class="mode-desc">شاشتين للنظارة</span></button>
 </div>
+
+<button id="switchBtn" onclick="showModeScreen()">🔄 غيّر الوضع</button>
+
+<a-scene id="scene"
+  vr-mode-ui="enabled:true; cardboardModeEnabled:true"
+  device-orientation-permission-ui="enabled:true"
+  style="display:none">
+  <a-assets>
+    <video id="video360"  crossorigin="anonymous" loop playsinline webkit-playsinline></video>
+    <video id="videoFlat" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
+  </a-assets>
+
+  <!--
+    الفيديو 360 بدون أي rotation — هنتحكم في الاتجاه عن طريق الـ rig بس
+    مش محتاجين rotation="0 180 0" لأنه بيعمل offset
+  -->
+  <a-videosphere id="videoSphere" src="#video360" visible="false"></a-videosphere>
+  <a-video       id="videoPanel"  src="#videoFlat" width="6" height="3.4" position="0 1.6 -4" visible="false"></a-video>
+  <a-sky         id="imageSky"    src="" visible="false" radius="100"></a-sky>
+  <a-image       id="imagePanel"  src="" width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
+
+  <!--
+    rig: بيحمل الكاميرا
+    rotation.y على الـ rig = الاتجاه الابتدائي
+    A-Frame Y: موجب = يسار (عكس عقارب الساعة)
+    الـ offset الثابت 180° موجود لأن الفيديو بيبدأ من الجنوب
+    فالمعادلة: rig.y = 180 - degree
+  -->
+  <a-entity id="rig" rotation="0 270 0" position="0 0 0">
+    <a-camera id="mainCamera" look-controls wasd-controls="enabled:false">
+      <a-cursor color="#00f5ff"></a-cursor>
+    </a-camera>
+  </a-entity>
+</a-scene>
 
 <script>
+  const video360  = document.getElementById('video360');
+  const videoFlat = document.getElementById('videoFlat');
+  const scene       = document.getElementById('scene');
+  const rig         = document.getElementById('rig');
+  const videoSphere = document.getElementById('videoSphere');
+  const videoPanel  = document.getElementById('videoPanel');
+  const imageSky    = document.getElementById('imageSky');
+  const imagePanel  = document.getElementById('imagePanel');
   const socket = io();
-  let currentIndex=0, selectedType='video', selectedDegree=0;
-  let isPlaying=false, startedAt=null, pausedAt=0;
-  let timerInterval=null, isMuted=false, currentVolume=100;
-  let videoDuration=0, isDragging=false;
 
-  const typeIcons  = {video:'🌐',videoFlat:'🎬',image:'🖼️',image360:'🌐'};
-  const typeLabels = {video:'فيديو 360°',videoFlat:'فيديو عادي',image:'صورة عادية',image360:'صورة 360°'};
+  let sceneStarted = false, pendingData = null, currentMode = null;
 
-  let mediaList = [
-    {name:'جولة المعبد',type:'video',degree:0,
-     url:'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4'}
-  ];
-
-  // ===== تهيئة Room تلقائي =====
-  socket.emit('initHost');
-  socket.on('roomReady', (data) => {
-    document.getElementById('roomCode').textContent = data.code;
-    setStatus('✅ Room جاهزة — الكود: ' + data.code);
+  // ينضم تلقائي لأول room
+  socket.emit('autoJoin');
+  socket.on('noRoom', () => {
+    setTimeout(() => socket.emit('autoJoin'), 3000);
   });
 
-  // ===== أجهزة =====
-  function statusClass(s) {
-    if (s==='انتظار') return 'sb-wait';
-    if (s==='اختيار وضع') return 'sb-choose';
-    if (s==='عادي') return 'sb-normal';
-    if (s==='VR') return 'sb-vr';
-    return 'sb-wait';
-  }
-
-  socket.on('viewerList', (list) => {
-    const el = document.getElementById('viewerList');
-    if (!list.length) { el.innerHTML='<div class="no-viewers">لا يوجد أجهزة متصلة</div>'; return; }
-    el.innerHTML = list.map((v,i) => `
-      <div class="viewer-item">
-        <div class="viewer-num">${v.num||i+1}</div>
-        <div class="viewer-status">
-          <span class="status-badge ${statusClass(v.status)}">${v.status||'انتظار'}</span>
-        </div>
-      </div>`).join('');
+  // لو اتطرد
+  socket.on('kicked', () => {
+    window.location.href = 'about:blank';
   });
 
-  socket.on('viewers', c => document.getElementById('viewerCount').textContent = c);
-
-  // ===== صوت =====
-  function setVolume(val) {
-    currentVolume=parseInt(val);
-    document.getElementById('volVal').textContent=currentVolume+'%';
-    if (currentVolume>0) isMuted=false;
-    updateMuteBtn();
-    socket.emit('setVolume',{volume:currentVolume/100,muted:isMuted});
-  }
-  function toggleMute() {
-    isMuted=!isMuted; updateMuteBtn();
-    socket.emit('setVolume',{volume:currentVolume/100,muted:isMuted});
-  }
-  function updateMuteBtn() {
-    const b=document.getElementById('muteBtn');
-    b.textContent=isMuted?'🔊 فك':'🔇 كتم';
-    b.classList.toggle('muted',isMuted);
+  function showModeScreen() {
+    scene.style.display = 'none';
+    document.getElementById('switchBtn').style.display = 'none';
+    document.getElementById('modeScreen').style.display = 'flex';
+    socket.emit('statusUpdate', { status: 'اختيار وضع' });
   }
 
-  // ===== seek =====
-  function seekSliderMove(val) { isDragging=true; document.getElementById('timerDisplay').textContent=formatTime((val/100)*videoDuration); }
-  function seekSliderDrop(val) { isDragging=false; seekToSeconds((val/100)*videoDuration); }
-  function seekManual() {
-    const raw=document.getElementById('seekInput').value.trim(); let secs=0;
-    if (raw.includes(':')) { const p=raw.split(':'); secs=p.length===2?parseInt(p[0])*60+parseFloat(p[1]):parseInt(p[0])*3600+parseInt(p[1])*60+parseFloat(p[2]); }
-    else secs=parseFloat(raw);
-    if (isNaN(secs)) return alert('اكتب وقت صح!');
-    seekToSeconds(secs); document.getElementById('seekInput').value='';
-  }
-  function seekToSeconds(secs) {
-    startedAt=Date.now()-(secs*1000); pausedAt=secs;
-    socket.emit('seek',{seconds:secs}); setStatus('⏩ '+formatTime(secs));
-    if (!isDragging) { document.getElementById('seekSlider').value=(secs/videoDuration)*100; }
+  function startMode(mode) {
+    currentMode = mode;
+    document.getElementById('modeScreen').style.display = 'none';
+    scene.style.display = 'block';
+    document.getElementById('switchBtn').style.display = 'block';
+    socket.emit('statusUpdate', { status: mode === 'vr' ? 'VR' : 'عادي' });
+    if (mode === 'vr') scene.enterVR();
+    if (pendingData) applyState(pendingData);
   }
 
-  // ===== اتجاه =====
-  function setDegree(val) {
-    selectedDegree=val;
-    document.getElementById('degSlider').value=val;
-    document.getElementById('degreeVal').textContent=val+'°';
-    document.getElementById('degSliderVal').textContent=val+'°';
+  function setCameraYaw(degree) {
+    // offset 180 لأن الـ videosphere بيبدأ من الجنوب بدون rotation
+    // offset = 270 لأن الـ default بيبص غرب
+    // 0°  → rigY = 270  → شمال ✓
+    // 90° → rigY = 180  → شرق  ✓
+    // 180°→ rigY = 90   → جنوب ✓
+    // 270°→ rigY = 0    → غرب  ✓
+    rig.setAttribute('rotation', { x: 0, y: degree, z: 0 });
   }
 
-  function selectType(t) {
-    selectedType=t;
-    ['video','videoFlat','image','image360'].forEach(x=>document.getElementById('t_'+x)?.classList.remove('selected'));
-    document.getElementById('t_'+t)?.classList.add('selected');
+  function applyVolume(video, volume, muted) {
+    video.volume = Math.max(0, Math.min(1, volume ?? 1));
+    video.muted  = muted ?? false;
+    video.addEventListener('loadedmetadata', () => {
+      if (video.duration && !isNaN(video.duration))
+        socket.emit('reportDuration', { duration: video.duration });
+    }, { once: true });
+    if (video.duration && !isNaN(video.duration))
+      socket.emit('reportDuration', { duration: video.duration });
   }
 
-  function compassLabel(d) {
-    if(d<=22||d>=338)return'⬆️ شمال';if(d<68)return'↗️';if(d<=112)return'➡️ شرق';
-    if(d<158)return'↘️';if(d<=202)return'⬇️ جنوب';if(d<248)return'↙️';
-    if(d<=292)return'⬅️ غرب';return'↖️';
+  function hideAll() {
+    videoSphere.setAttribute('visible', false);
+    videoPanel.setAttribute('visible', false);
+    imageSky.setAttribute('visible', false);
+    imagePanel.setAttribute('visible', false);
+    video360.pause(); videoFlat.pause();
   }
 
-  // ===== قائمة المحتوى =====
-  function renderMedia() {
-    const el=document.getElementById('mediaList');
-    if (!mediaList.length) { el.innerHTML='<div class="no-viewers">لا يوجد محتوى</div>'; return; }
-    el.innerHTML=mediaList.map((m,i)=>`
-      <div class="media-item ${i===currentIndex?'active':''}" onclick="currentIndex=${i};renderMedia()">
-        <div class="micon">${typeIcons[m.type]}</div>
-        <div class="minfo">
-          <div class="mname">${m.name}</div>
-          <div class="mmeta"><span>${typeLabels[m.type]}</span><span>${compassLabel(m.degree||0)}</span></div>
-        </div>
-        <div class="macts">
-          <button class="play-btn" onclick="event.stopPropagation();showMedia(${i})">▶</button>
-          <button class="del-btn"  onclick="event.stopPropagation();deleteMedia(${i})">🗑</button>
-        </div>
-      </div>`).join('');
+  function applyState(data) {
+    hideAll();
+    setCameraYaw(data.degree || 0);
+
+    if (data.type === 'video') {
+      if (video360.src !== data.url) { video360.src = data.url; video360.load(); }
+      videoSphere.setAttribute('visible', true);
+      applyVolume(video360, data.volume, data.muted);
+      if (data.playing && data.startedAt) {
+        const elapsed = (Date.now() - data.startedAt) / 1000;
+        video360.currentTime = Math.max(0, elapsed);
+        video360.play().catch(() => { video360.muted = true; video360.play(); });
+      } else {
+        if (data.pausedAt) video360.currentTime = data.pausedAt;
+        video360.pause();
+      }
+
+    } else if (data.type === 'videoFlat') {
+      if (videoFlat.src !== data.url) { videoFlat.src = data.url; videoFlat.load(); }
+      videoPanel.setAttribute('visible', true);
+      applyVolume(videoFlat, data.volume, data.muted);
+      if (data.playing && data.startedAt) {
+        const elapsed = (Date.now() - data.startedAt) / 1000;
+        videoFlat.currentTime = Math.max(0, elapsed);
+        videoFlat.play().catch(() => { videoFlat.muted = true; videoFlat.play(); });
+      } else {
+        if (data.pausedAt) videoFlat.currentTime = data.pausedAt;
+        videoFlat.pause();
+      }
+
+    } else if (data.type === 'image360') {
+      imageSky.setAttribute('src', data.url);
+      imageSky.setAttribute('visible', true);
+
+    } else if (data.type === 'image') {
+      imagePanel.setAttribute('src', data.url);
+      imagePanel.setAttribute('visible', true);
+    }
   }
 
-  function addMedia() {
-    const name=document.getElementById('mediaName').value.trim();
-    const url=document.getElementById('mediaUrl').value.trim();
-    if (!name||!url) return alert('حط اسم ورابط!');
-    mediaList.push({name,type:selectedType,url,degree:selectedDegree});
-    document.getElementById('mediaName').value='';
-    document.getElementById('mediaUrl').value='';
-    setDegree(0); renderMedia(); setStatus('✅ '+name);
+  function handleState(data) {
+    if (!data.url) return;
+    pendingData = data;
+    if (!sceneStarted) {
+      sceneStarted = true;
+      document.getElementById('waitScreen').style.display = 'none';
+      showModeScreen();
+    } else if (currentMode) {
+      applyState(data);
+    }
   }
 
-  function deleteMedia(i) {
-    mediaList.splice(i,1);
-    if (currentIndex>=mediaList.length) currentIndex=Math.max(0,mediaList.length-1);
-    renderMedia();
-  }
+  socket.on('setVolume', (data) => {
+    [video360, videoFlat].forEach(v => {
+      v.volume = Math.max(0, Math.min(1, data.volume ?? 1));
+      v.muted  = data.muted ?? false;
+    });
+  });
 
-  function showMedia(i) {
-    currentIndex=i; const m=mediaList[i]; renderMedia();
-    pausedAt=0; startedAt=Date.now(); isPlaying=true;
-    const evt=(m.type==='image'||m.type==='image360')?'show':'restart';
-    socket.emit(evt,{url:m.url,type:m.type,degree:m.degree||0,volume:currentVolume/100,muted:isMuted});
-    startTimer(); setStatus('▶ '+m.name);
-  }
+  scene.addEventListener('exit-vr', () => { currentMode = 'normal'; });
+  socket.on('state', handleState);
+  socket.on('sync',  handleState);
 
-  function sendPlay() {
-    if (!mediaList[currentIndex]) return;
-    const m=mediaList[currentIndex];
-    socket.emit('play',{url:m.url,type:m.type,degree:m.degree||0,volume:currentVolume/100,muted:isMuted});
-    isPlaying=true; startedAt=Date.now()-(pausedAt*1000); startTimer(); setStatus('▶ تشغيل');
-  }
-  function sendPause() {
-    if (startedAt) pausedAt=(Date.now()-startedAt)/1000;
-    isPlaying=false; socket.emit('pause'); setStatus('⏸ متوقف');
-  }
-  function sendRestart() {
-    if (!mediaList[currentIndex]) return;
-    const m=mediaList[currentIndex];
-    socket.emit('restart',{url:m.url,type:m.type,degree:m.degree||0,volume:currentVolume/100,muted:isMuted});
-    isPlaying=true; pausedAt=0; startedAt=Date.now(); startTimer(); setStatus('🔄 من الأول');
-  }
-  function sendSync() {
-    socket.emit('syncAll');
-    const b=document.getElementById('syncBtn'); b.classList.add('flash');
-    setTimeout(()=>b.classList.remove('flash'),400); setStatus('⚡ Sync');
-  }
-  function startSession() { socket.emit('startSession'); setStatus('▶ بدأت الجلسة'); }
-  function stopSession()  { socket.emit('stopSession');  isPlaying=false; startedAt=null; pausedAt=0; updateTimerDisplay(0); setStatus('⏹ وقّفت الجلسة'); }
-  function kickAll()      { if (confirm('هتطرد كل الأجهزة؟')) { socket.emit('kickAll'); setStatus('🚪 تم طرد الكل'); } }
+  // أوامر الجلسة من المضيف
+  socket.on('sessionStart', () => {
+    if (!sceneStarted) {
+      sceneStarted = true;
+      document.getElementById('waitScreen').style.display = 'none';
+    }
+    showModeScreen();
+  });
 
-  function startTimer() {
-    clearInterval(timerInterval);
-    timerInterval=setInterval(()=>{
-      if (!isPlaying||!startedAt) return;
-      const s=(Date.now()-startedAt)/1000;
-      if (!isDragging) { updateTimerDisplay(s); if (videoDuration>0) document.getElementById('seekSlider').value=(s/videoDuration)*100; }
-    },200);
-  }
-  function updateTimerDisplay(s) { if(s<0)s=0; document.getElementById('timerDisplay').textContent=formatTime(s); }
-  function formatTime(s) {
-    if(s<0)s=0;
-    return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');
-  }
-  function setStatus(msg) { document.getElementById('statusBox').textContent=msg; }
-
-  socket.on('videoDuration',(d)=>{ if(d.duration>0){ videoDuration=d.duration; const m=Math.floor((d.duration%3600)/60),s=Math.floor(d.duration%60); document.getElementById('seekEnd').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }});
-  socket.on('state',data=>{ isPlaying=data.playing; startedAt=data.startedAt; pausedAt=data.pausedAt||0; if(!isPlaying) updateTimerDisplay(pausedAt); });
-
-  renderMedia(); startTimer();
+  socket.on('sessionStop', () => {
+    video360.pause(); videoFlat.pause();
+    scene.style.display = 'none';
+    document.getElementById('switchBtn').style.display = 'none';
+    document.getElementById('modeScreen').style.display = 'none';
+    document.getElementById('waitScreen').style.display = 'flex';
+    sceneStarted = false; currentMode = null; pendingData = null;
+    socket.emit('statusUpdate', { status: 'انتظار' });
+  });
 </script>
 </body>
 </html>
