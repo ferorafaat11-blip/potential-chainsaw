@@ -104,14 +104,19 @@
   // ينضم تلقائي لأول room
   socket.emit('autoJoin');
   socket.on('noRoom', () => {
-    // لو مفيش room لسه — انتظر
     setTimeout(() => socket.emit('autoJoin'), 3000);
+  });
+
+  // لو اتطرد
+  socket.on('kicked', () => {
+    window.location.href = 'about:blank';
   });
 
   function showModeScreen() {
     scene.style.display = 'none';
     document.getElementById('switchBtn').style.display = 'none';
     document.getElementById('modeScreen').style.display = 'flex';
+    socket.emit('statusUpdate', { status: 'اختيار وضع' });
   }
 
   function startMode(mode) {
@@ -119,6 +124,7 @@
     document.getElementById('modeScreen').style.display = 'none';
     scene.style.display = 'block';
     document.getElementById('switchBtn').style.display = 'block';
+    socket.emit('statusUpdate', { status: mode === 'vr' ? 'VR' : 'عادي' });
     if (mode === 'vr') scene.enterVR();
     if (pendingData) applyState(pendingData);
   }
@@ -225,15 +231,13 @@
   });
 
   socket.on('sessionStop', () => {
-    // أوقف كل حاجة وارجع لشاشة الانتظار
     video360.pause(); videoFlat.pause();
     scene.style.display = 'none';
     document.getElementById('switchBtn').style.display = 'none';
     document.getElementById('modeScreen').style.display = 'none';
     document.getElementById('waitScreen').style.display = 'flex';
-    sceneStarted = false;
-    currentMode = null;
-    pendingData = null;
+    sceneStarted = false; currentMode = null; pendingData = null;
+    socket.emit('statusUpdate', { status: 'انتظار' });
   });
 </script>
 </body>
