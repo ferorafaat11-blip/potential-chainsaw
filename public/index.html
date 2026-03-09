@@ -21,28 +21,6 @@
       0%,100%{box-shadow:0 0 0 0 rgba(0,245,255,0.4);transform:scale(1);}
       50%{box-shadow:0 0 0 20px rgba(0,245,255,0);transform:scale(1.05);}
     }
-
-    /* شاشة إدخال الكود */
-    #codeScreen {
-      position:fixed; inset:0; background:#050810;
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      z-index:10000; gap:16px;
-    }
-    .code-logo { font-size:2rem; font-weight:900; color:#00f5ff; }
-    .code-title { color:#fff; font-size:1.1rem; }
-    .code-input {
-      width:140px; padding:14px; text-align:center;
-      font-size:2.5rem; font-weight:900; letter-spacing:10px;
-      background:rgba(0,245,255,0.05); border:2px solid rgba(0,245,255,0.3);
-      border-radius:14px; color:#00f5ff; font-family:monospace;
-    }
-    .code-input:focus { outline:none; border-color:#00f5ff; }
-    .code-btn {
-      padding:12px 35px; background:#00f5ff; color:#000;
-      border:none; border-radius:12px; font-size:1rem; font-weight:900;
-      cursor:pointer; font-family:sans-serif;
-    }
-    .code-error { color:#ff006e; font-size:0.85rem; min-height:20px; }
     #modeScreen {
       display:none; position:fixed; inset:0; background:#050810;
       flex-direction:column; align-items:center; justify-content:center;
@@ -64,17 +42,7 @@
 </head>
 <body>
 
-<div id="codeScreen">
-  <div class="code-logo">🥽 VR 360</div>
-  <div class="code-title">ادخل كود الجلسة</div>
-  <input class="code-input" id="codeInput" type="tel" maxlength="1" placeholder="-"
-    oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,1)"
-    onkeydown="if(event.key==='Enter')joinRoom()" />
-  <button class="code-btn" onclick="joinRoom()">دخول ←</button>
-  <div class="code-error" id="codeError"></div>
-</div>
-
-<div id="waitScreen" style="display:none">
+<div id="waitScreen">
   <div class="logo">🥽 VR 360</div>
   <div class="wait-text">في انتظار المضيف...</div>
   <div class="pulse"></div>
@@ -133,23 +101,11 @@
 
   let sceneStarted = false, pendingData = null, currentMode = null;
 
-  // ===== دخول الـ Room =====
-  function joinRoom() {
-    const code = document.getElementById('codeInput').value.trim();
-    if (!code || code.length !== 1) {
-      document.getElementById('codeError').textContent = 'الكود رقم واحد بس!';
-      setTimeout(() => document.getElementById('codeError').textContent = '', 2000);
-      return;
-    }
-    socket.emit('joinRoom', { code });
-  }
-  socket.on('joinOk', () => {
-    document.getElementById('codeScreen').style.display = 'none';
-    document.getElementById('waitScreen').style.display = 'flex';
-  });
-  socket.on('joinError', (data) => {
-    document.getElementById('codeError').textContent = data.msg || 'كود غلط!';
-    setTimeout(() => document.getElementById('codeError').textContent = '', 2000);
+  // ينضم تلقائي لأول room
+  socket.emit('autoJoin');
+  socket.on('noRoom', () => {
+    // لو مفيش room لسه — انتظر
+    setTimeout(() => socket.emit('autoJoin'), 3000);
   });
 
   function showModeScreen() {
