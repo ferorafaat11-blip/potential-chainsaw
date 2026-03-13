@@ -71,13 +71,18 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 /* AUDIO CONTROLS */
 .audio-card{background:var(--s1);border:1px solid rgba(123,47,255,.3);border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:7px;}
 .audio-hdr{font-size:.68rem;color:var(--ac2);letter-spacing:2px;font-family:'Space Mono',monospace;}
+.audio-timer{font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;color:var(--ac2);text-shadow:0 0 15px rgba(123,47,255,.5);letter-spacing:2px;}
 .audio-row{display:flex;gap:5px;align-items:center;}
 .audio-url{flex:1;padding:6px 8px;background:var(--s2);border:1px solid var(--br);border-radius:6px;color:var(--tx);font-size:.75rem;direction:ltr;}
 .audio-url:focus{outline:none;border-color:var(--ac2);}
 .audio-url::placeholder{color:var(--mu);}
 .abt{padding:5px 10px;border:none;border-radius:6px;font-size:.73rem;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .15s;}
 .abt:active{transform:scale(.95);}
-.ab-pl{background:var(--ac2);color:#fff;} .ab-pa{background:var(--mu);color:#fff;} .ab-st{background:rgba(255,45,107,.2);color:var(--red);}
+.ab-pl{background:var(--ac2);color:#fff;} .ab-pa{background:var(--mu);color:#fff;} .ab-re{background:#3d2080;color:#fff;} .ab-sy{background:var(--warn);color:#000;} .ab-st{background:rgba(255,45,107,.2);color:var(--red);}
+.asl{flex:1;height:4px;accent-color:var(--ac2);cursor:pointer;border-radius:2px;}
+.aslbl{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--mu);min-width:30px;}
+.amuteb{padding:3px 7px;border-radius:5px;border:1px solid rgba(123,47,255,.4);background:rgba(123,47,255,.1);color:var(--ac2);font-size:.7rem;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;}
+.amuteb.on{background:var(--ac2);color:#fff;}
 
 /* MEDIA LIST */
 .media-card{grid-column:1;grid-row:3;background:var(--s1);border:1px solid var(--br);border-radius:9px;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
@@ -205,16 +210,35 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 
     <!-- AUDIO CARD -->
     <div class="audio-card">
-      <div class="audio-hdr">🎵 صوت منفصل</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="audio-hdr">🎵 صوت منفصل</div>
+        <div class="audio-timer" id="audioTimerDisp">00:00:00</div>
+      </div>
+      <!-- رابط -->
       <div class="audio-row">
         <input class="audio-url" id="audioUrl" placeholder="رابط الصوت mp3..." />
       </div>
+      <!-- seek -->
       <div class="audio-row">
-        <button class="abt ab-pl" onclick="playAudio()">▶ شغّل</button>
-        <button class="abt ab-pa" onclick="pauseAudio()">⏸ وقّف</button>
-        <button class="abt ab-st" onclick="stopAudio()">⏹ قف</button>
-        <input type="range" class="vsl" id="audioVolSl" min="0" max="100" value="100" oninput="setAudioVol(this.value)" style="flex:1">
+        <span class="aslbl">00:00</span>
+        <input type="range" class="asl" id="audioSeekSl" min="0" max="100" value="0"
+          oninput="audioSeekMove(this.value)" onchange="audioSeekDrop(this.value)">
+        <span class="aslbl" id="audioSeekEnd">00:00</span>
+      </div>
+      <!-- أزرار -->
+      <div class="audio-row">
+        <button class="abt ab-pl" onclick="playAudio()">▶</button>
+        <button class="abt ab-pa" onclick="pauseAudio()">⏸</button>
+        <button class="abt ab-re" onclick="restartAudio()">🔄</button>
+        <button class="abt ab-sy" onclick="syncAudio()">⚡</button>
+        <button class="abt ab-st" onclick="stopAudio()">⏹</button>
+      </div>
+      <!-- صوت -->
+      <div class="audio-row">
+        <span class="aslbl">🔊</span>
+        <input type="range" class="asl" id="audioVolSl" min="0" max="100" value="100" oninput="setAudioVol(this.value)">
         <span class="vval" id="audioVolVal">100%</span>
+        <button class="amuteb" id="audioMuteBtn" onclick="toggleAudioMute()">🔇</button>
       </div>
     </div>
   </div>
@@ -286,10 +310,59 @@ function toggleMute(){muted=!muted;updMute();socket.emit('setVolume',{volume:vol
 function updMute(){const b=document.getElementById('muteBtn');b.textContent=muted?'🔊':'🔇';b.classList.toggle('on',muted);}
 
 // ===== صوت منفصل =====
-function playAudio(){const u=document.getElementById('audioUrl').value.trim();if(!u)return st('حط رابط الصوت!');socket.emit('playAudio',{url:u,volume:audioVol/100});st('🎵 شغّل الصوت');}
-function pauseAudio(){socket.emit('pauseAudio');st('🎵 وقّف الصوت');}
-function stopAudio(){socket.emit('stopAudio');st('🎵 أوقف الصوت');}
-function setAudioVol(v){audioVol=+v;document.getElementById('audioVolVal').textContent=v+'%';socket.emit('setAudioVolume',{volume:v/100});}
+let audioPlaying=false, audioStartedAt=null, audioPausedAt=0, audioDur=0, audioDragging=false, audioMuted=false;
+let audioTimer=null;
+
+function playAudio(){
+  const u=document.getElementById('audioUrl').value.trim();
+  if(!u)return st('حط رابط الصوت!');
+  socket.emit('playAudio',{url:u,volume:audioVol/100,muted:audioMuted});
+  audioPlaying=true; audioStartedAt=Date.now()-(audioPausedAt*1000);
+  startAudioTimer(); st('🎵 شغّل الصوت');
+}
+function pauseAudio(){
+  if(audioStartedAt) audioPausedAt=(Date.now()-audioStartedAt)/1000;
+  audioPlaying=false; socket.emit('pauseAudio'); st('🎵 وقّف الصوت');
+}
+function restartAudio(){
+  const u=document.getElementById('audioUrl').value.trim();
+  if(!u)return st('حط رابط الصوت!');
+  socket.emit('restartAudio',{url:u,volume:audioVol/100,muted:audioMuted});
+  audioPlaying=true; audioPausedAt=0; audioStartedAt=Date.now();
+  startAudioTimer(); st('🔄 الصوت من الأول');
+}
+function syncAudio(){socket.emit('syncAll');st('⚡ Sync الصوت');}
+function stopAudio(){
+  socket.emit('stopAudio'); audioPlaying=false; audioPausedAt=0; audioStartedAt=null;
+  updAudioTimer(0); st('⏹ أوقف الصوت');
+}
+function setAudioVol(v){audioVol=+v;document.getElementById('audioVolVal').textContent=v+'%';socket.emit('setAudioVolume',{volume:v/100,muted:audioMuted});}
+function toggleAudioMute(){audioMuted=!audioMuted;const b=document.getElementById('audioMuteBtn');b.textContent=audioMuted?'🔊':'🔇';b.classList.toggle('on',audioMuted);socket.emit('setAudioVolume',{volume:audioVol/100,muted:audioMuted});}
+
+function audioSeekMove(v){audioDragging=true;updAudioTimerDisp((v/100)*audioDur);}
+function audioSeekDrop(v){audioDragging=false;audioSeekTo((v/100)*audioDur);}
+function audioSeekTo(s){
+  audioStartedAt=Date.now()-(s*1000); audioPausedAt=s;
+  socket.emit('seekAudio',{seconds:s}); st('⏩ صوت '+fmtA(s));
+}
+
+function startAudioTimer(){
+  clearInterval(audioTimer);
+  audioTimer=setInterval(()=>{
+    if(!audioPlaying||!audioStartedAt)return;
+    const s=(Date.now()-audioStartedAt)/1000;
+    if(!audioDragging){updAudioTimer(s);}
+  },200);
+}
+function updAudioTimer(s){
+  if(s<0)s=0;
+  updAudioTimerDisp(s);
+  if(audioDur>0&&!audioDragging) document.getElementById('audioSeekSl').value=(s/audioDur)*100;
+}
+function updAudioTimerDisp(s){document.getElementById('audioTimerDisp').textContent=fmtA(s);}
+function fmtA(s){if(s<0)s=0;return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');}
+
+socket.on('audioDuration',d=>{if(d.duration>0){audioDur=d.duration;const m=Math.floor((d.duration%3600)/60),s=Math.floor(d.duration%60);document.getElementById('audioSeekEnd').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}});
 
 // ===== seek =====
 function seekMove(v){dragging=true;document.getElementById('timerDisp').textContent=fmt((v/100)*dur);}
