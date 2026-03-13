@@ -299,6 +299,9 @@
 
   function applyState(data){
     hideAll(); setCameraYaw(data.degree||0);
+    var s = (data.size||100)/100;
+    videoPanel.setAttribute('width', 6*s); videoPanel.setAttribute('height', 3.4*s);
+    imagePanel.setAttribute('width', 5*s); imagePanel.setAttribute('height', 3*s);
     if(data.type==='video'){
       if(video360.src!==data.url){video360.src=data.url;video360.load();}
       videoSphere.setAttribute('visible',true); applyVolume(video360,data.volume,data.muted);
@@ -324,6 +327,16 @@
     if(!data.url)return; pendingData=data;
     if(sceneStarted&&currentMode)applyState(data);
   }
+
+  socket.on('setSize', function(data) {
+    var s = (data.size || 100) / 100;
+    // videoFlat: عرض أصلي 6، ارتفاع 3.4
+    videoPanel.setAttribute('width',  6 * s);
+    videoPanel.setAttribute('height', 3.4 * s);
+    // image: عرض أصلي 5، ارتفاع 3
+    imagePanel.setAttribute('width',  5 * s);
+    imagePanel.setAttribute('height', 3 * s);
+  });
 
   socket.on('setVolume',(data)=>{
     [video360,videoFlat].forEach(v=>{v.volume=Math.max(0,Math.min(1,data.volume??1));v.muted=data.muted??false;});
