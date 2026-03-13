@@ -25,138 +25,134 @@ function broadcastViewers() {
   io.emit('viewerList', list);
 }
 
-io.on('connection', (socket) => {
+io.on('connection', function(socket) {
 
-  // ===== HOST =====
-  socket.on('play', (data) => {
-    if (data?.url)    state.url    = data.url;
-    if (data?.type)   state.type   = data.type;
-    if (data?.degree  !== undefined) state.degree  = data.degree;
-    if (data?.volume  !== undefined) state.volume  = data.volume;
-    if (data?.muted   !== undefined) state.muted   = data.muted;
+  socket.on('play', function(data) {
+    if (data && data.url)    state.url    = data.url;
+    if (data && data.type)   state.type   = data.type;
+    if (data && data.degree  !== undefined) state.degree  = data.degree;
+    if (data && data.volume  !== undefined) state.volume  = data.volume;
+    if (data && data.muted   !== undefined) state.muted   = data.muted;
     state.playing   = true;
     state.startedAt = Date.now() - (state.pausedAt * 1000);
-    io.emit('state', { ...state, serverTime: Date.now() });
+    io.emit('state', Object.assign({}, state, { serverTime: Date.now() }));
   });
 
-  socket.on('pause', () => {
+  socket.on('pause', function() {
     if (state.startedAt) state.pausedAt = (Date.now() - state.startedAt) / 1000;
     state.playing = false;
-    io.emit('state', { ...state, serverTime: Date.now() });
+    io.emit('state', Object.assign({}, state, { serverTime: Date.now() }));
   });
 
-  socket.on('restart', (data) => {
-    if (data?.url)    state.url    = data.url;
-    if (data?.type)   state.type   = data.type;
-    if (data?.degree  !== undefined) state.degree  = data.degree;
-    if (data?.volume  !== undefined) state.volume  = data.volume;
-    if (data?.muted   !== undefined) state.muted   = data.muted;
+  socket.on('restart', function(data) {
+    if (data && data.url)   state.url   = data.url;
+    if (data && data.type)  state.type  = data.type;
+    if (data && data.degree !== undefined) state.degree = data.degree;
+    if (data && data.volume !== undefined) state.volume = data.volume;
+    if (data && data.muted  !== undefined) state.muted  = data.muted;
     state.playing   = true;
     state.pausedAt  = 0;
     state.startedAt = Date.now();
-    io.emit('state', { ...state, serverTime: Date.now() });
+    io.emit('state', Object.assign({}, state, { serverTime: Date.now() }));
   });
 
-  socket.on('show', (data) => {
+  socket.on('show', function(data) {
     state.url  = data.url;
     state.type = data.type;
-    if (data?.degree !== undefined) state.degree = data.degree;
-    if (data?.volume !== undefined) state.volume = data.volume;
-    if (data?.muted  !== undefined) state.muted  = data.muted;
+    if (data.degree !== undefined) state.degree = data.degree;
+    if (data.volume !== undefined) state.volume = data.volume;
+    if (data.muted  !== undefined) state.muted  = data.muted;
     state.playing   = true;
     state.startedAt = Date.now();
     state.pausedAt  = 0;
-    io.emit('state', { ...state, serverTime: Date.now() });
+    io.emit('state', Object.assign({}, state, { serverTime: Date.now() }));
   });
 
-  socket.on('seek', (data) => {
+  socket.on('seek', function(data) {
     state.pausedAt  = data.seconds;
     state.startedAt = Date.now() - (data.seconds * 1000);
-    io.emit('state', { ...state, serverTime: Date.now() });
+    io.emit('state', Object.assign({}, state, { serverTime: Date.now() }));
   });
 
-  socket.on('setVolume', (data) => {
-    if (data?.volume !== undefined) state.volume = data.volume;
-    if (data?.muted  !== undefined) state.muted  = data.muted;
+  socket.on('setVolume', function(data) {
+    if (data && data.volume !== undefined) state.volume = data.volume;
+    if (data && data.muted  !== undefined) state.muted  = data.muted;
     io.emit('setVolume', { volume: state.volume, muted: state.muted });
   });
 
-  socket.on('syncAll', () => {
-    io.emit('sync', { ...state, serverTime: Date.now() });
+  socket.on('syncAll', function() {
+    io.emit('sync', Object.assign({}, state, { serverTime: Date.now() }));
   });
 
-  socket.on('startSession', () => {
-    io.emit('sessionStart');
-    Object.keys(viewers).forEach(id => { if(viewers[id]) viewers[id].status = 'اختيار وضع'; });
-    broadcastViewers();
-  });
-
-  socket.on('stopSession', () => {
-    state.playing = false; state.startedAt = null; state.pausedAt = 0;
-    state.audioPlaying = false; state.audioStartedAt = null; state.audioPausedAt = 0;
-    io.emit('sessionStop');
-    Object.keys(viewers).forEach(id => { if(viewers[id]) viewers[id].status = 'انتظار'; });
-    broadcastViewers();
-  });
-
-  socket.on('kickAll', () => {
+  socket.on('kickAll', function() {
     io.emit('kicked');
   });
 
-  // ===== AUDIO =====
-  socket.on('playAudio', (data) => {
-    if (data?.url) state.audioUrl = data.url;
-    if (data?.volume !== undefined) state.audioVolume = data.volume;
+  socket.on('playAudio', function(data) {
+    if (data && data.url) state.audioUrl = data.url;
+    if (data && data.volume !== undefined) state.audioVolume = data.volume;
     state.audioPlaying   = true;
     state.audioStartedAt = Date.now() - (state.audioPausedAt * 1000);
-    io.emit('audioState', { playing:true, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:state.audioPausedAt, volume:state.audioVolume, serverTime:Date.now() });
+    io.emit('audioState', {
+      playing: true, url: state.audioUrl,
+      startedAt: state.audioStartedAt, pausedAt: state.audioPausedAt,
+      volume: state.audioVolume, serverTime: Date.now()
+    });
   });
 
-  socket.on('pauseAudio', () => {
+  socket.on('pauseAudio', function() {
     if (state.audioStartedAt) state.audioPausedAt = (Date.now() - state.audioStartedAt) / 1000;
     state.audioPlaying = false;
-    io.emit('audioState', { playing:false, pausedAt:state.audioPausedAt, volume:state.audioVolume });
+    io.emit('audioState', { playing: false, pausedAt: state.audioPausedAt, volume: state.audioVolume });
   });
 
-  socket.on('restartAudio', (data) => {
-    if (data?.url) state.audioUrl = data.url;
-    if (data?.volume !== undefined) state.audioVolume = data.volume;
+  socket.on('restartAudio', function(data) {
+    if (data && data.url) state.audioUrl = data.url;
+    if (data && data.volume !== undefined) state.audioVolume = data.volume;
     state.audioPlaying   = true;
     state.audioPausedAt  = 0;
     state.audioStartedAt = Date.now();
-    io.emit('audioState', { playing:true, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:0, volume:state.audioVolume, serverTime:Date.now() });
+    io.emit('audioState', {
+      playing: true, url: state.audioUrl,
+      startedAt: state.audioStartedAt, pausedAt: 0,
+      volume: state.audioVolume, serverTime: Date.now()
+    });
   });
 
-  socket.on('stopAudio', () => {
-    state.audioPlaying = false; state.audioPausedAt = 0; state.audioStartedAt = null;
-    io.emit('audioState', { playing:false, stop:true, volume:state.audioVolume });
+  socket.on('stopAudio', function() {
+    state.audioPlaying = false;
+    state.audioPausedAt = 0;
+    state.audioStartedAt = null;
+    io.emit('audioState', { playing: false, stop: true, volume: state.audioVolume });
   });
 
-  socket.on('seekAudio', (data) => {
+  socket.on('seekAudio', function(data) {
     state.audioPausedAt  = data.seconds;
     state.audioStartedAt = Date.now() - (data.seconds * 1000);
-    io.emit('audioState', { playing:state.audioPlaying, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:state.audioPausedAt, volume:state.audioVolume, serverTime:Date.now() });
+    io.emit('audioState', {
+      playing: state.audioPlaying, url: state.audioUrl,
+      startedAt: state.audioStartedAt, pausedAt: state.audioPausedAt,
+      volume: state.audioVolume, serverTime: Date.now()
+    });
   });
 
-  socket.on('setAudioVolume', (data) => {
-    if (data?.volume !== undefined) state.audioVolume = data.volume;
+  socket.on('setAudioVolume', function(data) {
+    if (data && data.volume !== undefined) state.audioVolume = data.volume;
     io.emit('audioVolume', { volume: state.audioVolume });
   });
 
-  // ===== VIEWER =====
-  socket.on('setAllowJoin', (data) => {
+  socket.on('setAllowJoin', function(data) {
     allowJoin = data.allow;
-    // ابعت للـ viewers بس (اللي عملوا autoJoin)
-    const viewerIds = Object.keys(viewers);
+    var viewerIds = Object.keys(viewers);
     if (allowJoin) {
-      viewerIds.forEach(id => {
-        const s = io.sockets.sockets.get(id);
+      viewerIds.forEach(function(id) {
+        var s = io.sockets.sockets.get(id);
         if (s) s.emit('sessionStart');
         if (viewers[id]) viewers[id].status = 'اختيار وضع';
       });
     } else {
-      viewerIds.forEach(id => {
-        const s = io.sockets.sockets.get(id);
+      viewerIds.forEach(function(id) {
+        var s = io.sockets.sockets.get(id);
         if (s) s.emit('sessionStop');
         if (viewers[id]) viewers[id].status = 'انتظار';
       });
@@ -165,196 +161,50 @@ io.on('connection', (socket) => {
     socket.emit('joinToggleOk', { allow: allowJoin });
   });
 
-  socket.on('autoJoin', (data) => {
+  socket.on('autoJoin', function(data) {
     viewerCounter++;
-    const name = data?.name || ('جهاز ' + viewerCounter);
-    viewers[socket.id] = { id: socket.id, num: viewerCounter, name, status: 'انتظار' };
+    var name = (data && data.name) ? data.name : ('جهاز ' + viewerCounter);
+    viewers[socket.id] = { id: socket.id, num: viewerCounter, name: name, status: 'انتظار' };
     broadcastViewers();
     socket.emit('joinOk', { allow: allowJoin });
-    socket.emit('state', { ...state, serverTime: Date.now() });
-    if (state.audioUrl) socket.emit('audioState', { playing:state.audioPlaying, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:state.audioPausedAt, volume:state.audioVolume, serverTime:Date.now() });
+    socket.emit('state', Object.assign({}, state, { serverTime: Date.now() }));
+    if (state.audioUrl) {
+      socket.emit('audioState', {
+        playing: state.audioPlaying, url: state.audioUrl,
+        startedAt: state.audioStartedAt, pausedAt: state.audioPausedAt,
+        volume: state.audioVolume, serverTime: Date.now()
+      });
+    }
   });
 
-  socket.on('kickOne', (data) => {
-    const target = io.sockets.sockets.get(data.id);
-    if (target) { target.emit('kicked'); delete viewers[data.id]; broadcastViewers(); }
+  socket.on('kickOne', function(data) {
+    var target = io.sockets.sockets.get(data.id);
+    if (target) {
+      target.emit('kicked');
+      delete viewers[data.id];
+      broadcastViewers();
+    }
   });
 
-  socket.on('statusUpdate', (data) => {
+  socket.on('statusUpdate', function(data) {
     if (viewers[socket.id]) {
       viewers[socket.id].status = data.status;
       broadcastViewers();
     }
   });
 
-  socket.on('reportDuration', (data) => {
+  socket.on('reportDuration', function(data) {
     io.emit('videoDuration', data);
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', function() {
     delete viewers[socket.id];
     broadcastViewers();
   });
+
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('Server on port ' + PORT));
-    state.playing   = true;
-    state.startedAt = Date.now() - (state.pausedAt * 1000);
-    io.emit('state', { ...state, serverTime: Date.now() });
-  });
-
-  socket.on('pause', () => {
-    if (state.startedAt) state.pausedAt = (Date.now() - state.startedAt) / 1000;
-    state.playing = false;
-    io.emit('state', { ...state, serverTime: Date.now() });
-  });
-
-  socket.on('restart', (data) => {
-    if (data?.url)    state.url    = data.url;
-    if (data?.type)   state.type   = data.type;
-    if (data?.degree  !== undefined) state.degree  = data.degree;
-    if (data?.volume  !== undefined) state.volume  = data.volume;
-    if (data?.muted   !== undefined) state.muted   = data.muted;
-    state.playing   = true;
-    state.pausedAt  = 0;
-    state.startedAt = Date.now();
-    io.emit('state', { ...state, serverTime: Date.now() });
-  });
-
-  socket.on('show', (data) => {
-    state.url  = data.url;
-    state.type = data.type;
-    if (data?.degree !== undefined) state.degree = data.degree;
-    if (data?.volume !== undefined) state.volume = data.volume;
-    if (data?.muted  !== undefined) state.muted  = data.muted;
-    state.playing   = true;
-    state.startedAt = Date.now();
-    state.pausedAt  = 0;
-    io.emit('state', { ...state, serverTime: Date.now() });
-  });
-
-  socket.on('seek', (data) => {
-    state.pausedAt  = data.seconds;
-    state.startedAt = Date.now() - (data.seconds * 1000);
-    io.emit('state', { ...state, serverTime: Date.now() });
-  });
-
-  socket.on('setVolume', (data) => {
-    if (data?.volume !== undefined) state.volume = data.volume;
-    if (data?.muted  !== undefined) state.muted  = data.muted;
-    io.emit('setVolume', { volume: state.volume, muted: state.muted });
-  });
-
-  socket.on('syncAll', () => {
-    io.emit('sync', { ...state, serverTime: Date.now() });
-  });
-
-  socket.on('startSession', () => {
-    io.emit('sessionStart');
-    Object.keys(viewers).forEach(id => { if(viewers[id]) viewers[id].status = 'اختيار وضع'; });
-    broadcastViewers();
-  });
-
-  socket.on('stopSession', () => {
-    state.playing = false; state.startedAt = null; state.pausedAt = 0;
-    state.audioPlaying = false; state.audioStartedAt = null; state.audioPausedAt = 0;
-    io.emit('sessionStop');
-    Object.keys(viewers).forEach(id => { if(viewers[id]) viewers[id].status = 'انتظار'; });
-    broadcastViewers();
-  });
-
-  socket.on('kickAll', () => {
-    io.emit('kicked');
-  });
-
-  // ===== AUDIO =====
-  socket.on('playAudio', (data) => {
-    if (data?.url) state.audioUrl = data.url;
-    if (data?.volume !== undefined) state.audioVolume = data.volume;
-    state.audioPlaying   = true;
-    state.audioStartedAt = Date.now() - (state.audioPausedAt * 1000);
-    io.emit('audioState', { playing:true, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:state.audioPausedAt, volume:state.audioVolume, serverTime:Date.now() });
-  });
-
-  socket.on('pauseAudio', () => {
-    if (state.audioStartedAt) state.audioPausedAt = (Date.now() - state.audioStartedAt) / 1000;
-    state.audioPlaying = false;
-    io.emit('audioState', { playing:false, pausedAt:state.audioPausedAt, volume:state.audioVolume });
-  });
-
-  socket.on('restartAudio', (data) => {
-    if (data?.url) state.audioUrl = data.url;
-    if (data?.volume !== undefined) state.audioVolume = data.volume;
-    state.audioPlaying   = true;
-    state.audioPausedAt  = 0;
-    state.audioStartedAt = Date.now();
-    io.emit('audioState', { playing:true, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:0, volume:state.audioVolume, serverTime:Date.now() });
-  });
-
-  socket.on('stopAudio', () => {
-    state.audioPlaying = false; state.audioPausedAt = 0; state.audioStartedAt = null;
-    io.emit('audioState', { playing:false, stop:true, volume:state.audioVolume });
-  });
-
-  socket.on('seekAudio', (data) => {
-    state.audioPausedAt  = data.seconds;
-    state.audioStartedAt = Date.now() - (data.seconds * 1000);
-    io.emit('audioState', { playing:state.audioPlaying, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:state.audioPausedAt, volume:state.audioVolume, serverTime:Date.now() });
-  });
-
-  socket.on('setAudioVolume', (data) => {
-    if (data?.volume !== undefined) state.audioVolume = data.volume;
-    io.emit('audioVolume', { volume: state.audioVolume });
-  });
-
-  // ===== VIEWER =====
-  socket.on('setAllowJoin', (data) => {
-    allowJoin = data.allow;
-    if (allowJoin) {
-      // ابعت sessionStart للـ viewers بس (مش للهوست اللي بعت الأمر)
-      socket.broadcast.emit('sessionStart');
-      Object.keys(viewers).forEach(id => { if(viewers[id]) viewers[id].status = 'اختيار وضع'; });
-    } else {
-      socket.broadcast.emit('sessionStop');
-      Object.keys(viewers).forEach(id => { if(viewers[id]) viewers[id].status = 'انتظار'; });
-    }
-    broadcastViewers();
-    // رد على الهوست بتأكيد
-    socket.emit('joinToggleOk', { allow: allowJoin });
-  });
-
-  socket.on('autoJoin', (data) => {
-    viewerCounter++;
-    const name = data?.name || ('جهاز ' + viewerCounter);
-    viewers[socket.id] = { id: socket.id, num: viewerCounter, name, status: 'انتظار' };
-    broadcastViewers();
-    socket.emit('joinOk', { allow: allowJoin });
-    socket.emit('state', { ...state, serverTime: Date.now() });
-    if (state.audioUrl) socket.emit('audioState', { playing:state.audioPlaying, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:state.audioPausedAt, volume:state.audioVolume, serverTime:Date.now() });
-  });
-
-  socket.on('kickOne', (data) => {
-    const target = io.sockets.sockets.get(data.id);
-    if (target) { target.emit('kicked'); delete viewers[data.id]; broadcastViewers(); }
-  });
-
-  socket.on('statusUpdate', (data) => {
-    if (viewers[socket.id]) {
-      viewers[socket.id].status = data.status;
-      broadcastViewers();
-    }
-  });
-
-  socket.on('reportDuration', (data) => {
-    io.emit('videoDuration', data);
-  });
-
-  socket.on('disconnect', () => {
-    delete viewers[socket.id];
-    broadcastViewers();
-  });
+var PORT = process.env.PORT || 3000;
+server.listen(PORT, function() {
+  console.log('Server on port ' + PORT);
 });
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('Server on port ' + PORT));
