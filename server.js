@@ -1,193 +1,367 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>VR 360</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@600;800&family=Noto+Kufi+Arabic:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#000;overflow:hidden;font-family:'Noto Kufi Arabic',sans-serif;}
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+    /* ─── WAIT SCREEN ─── */
+    #waitScreen{
+      position:fixed;inset:0;z-index:9999;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:radial-gradient(ellipse 80% 70% at 50% 40%, #0a0f2e 0%, #03050f 100%);
+      gap:28px; overflow:hidden;
+    }
 
-app.use(express.static('public'));
+    /* stars */
+    #waitScreen::before{
+      content:'';position:absolute;inset:0;
+      background-image:
+        radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,.7) 0%, transparent 100%),
+        radial-gradient(1px 1px at 25% 60%, rgba(255,255,255,.5) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 40% 10%, rgba(255,255,255,.8) 0%, transparent 100%),
+        radial-gradient(1px 1px at 55% 75%, rgba(255,255,255,.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 70% 30%, rgba(255,255,255,.6) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 85% 55%, rgba(255,255,255,.7) 0%, transparent 100%),
+        radial-gradient(1px 1px at 15% 85%, rgba(255,255,255,.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 15%, rgba(255,255,255,.6) 0%, transparent 100%),
+        radial-gradient(1px 1px at 60% 50%, rgba(255,255,255,.3) 0%, transparent 100%),
+        radial-gradient(2px 2px at 33% 40%, rgba(200,220,255,.6) 0%, transparent 100%),
+        radial-gradient(1px 1px at 78% 80%, rgba(255,255,255,.4) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 50% 90%, rgba(180,200,255,.5) 0%, transparent 100%);
+      pointer-events:none;
+    }
 
-var state = {
-  type: 'video', url: '', degree: 0,
-  playing: false, startedAt: null, pausedAt: 0,
-  volume: 1, muted: false,
-  audioUrl: '', audioPlaying: false, audioStartedAt: null, audioPausedAt: 0, audioVolume: 1
-};
+    .w-orb{
+      width:130px;height:130px;border-radius:50%;
+      background:radial-gradient(circle at 35% 35%, #1e3fff 0%, #0d1f8a 50%, #050a2e 100%);
+      box-shadow: 0 0 40px rgba(30,63,255,.5), 0 0 80px rgba(30,63,255,.2), inset 0 0 30px rgba(255,255,255,.05);
+      position:relative; animation:orbFloat 4s ease-in-out infinite;
+      flex-shrink:0;
+    }
+    .w-orb::after{
+      content:'🥽'; position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      font-size:2.8rem; filter:drop-shadow(0 0 10px rgba(100,160,255,.8));
+    }
+    @keyframes orbFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
 
-var viewers = {};
-var hostSockets = {};
-var viewerCounter = 0;
-var allowJoin = false;
+    .w-ring{
+      position:absolute;width:160px;height:160px;border-radius:50%;
+      border:1px solid rgba(30,63,255,.25);
+      animation:ringPulse 2.5s ease-out infinite;
+    }
+    .w-ring:nth-child(2){animation-delay:.6s;width:200px;height:200px;border-color:rgba(30,63,255,.12);}
+    .w-ring:nth-child(3){animation-delay:1.2s;width:240px;height:240px;border-color:rgba(30,63,255,.06);}
+    @keyframes ringPulse{0%{opacity:1;transform:scale(.8);}100%{opacity:0;transform:scale(1.5);}}
 
-function broadcastViewers() {
-  var list = Object.values(viewers);
-  io.emit('viewers', list.length);
-  io.emit('viewerList', list);
-}
+    .w-title{
+      font-family:'Oxanium',monospace; font-size:1.5rem; font-weight:800;
+      color:#fff; letter-spacing:6px; text-transform:uppercase;
+      text-shadow:0 0 30px rgba(100,140,255,.8);
+      position:relative; z-index:1;
+    }
+    .w-sub{
+      font-size:.85rem; color:rgba(140,160,220,.7);
+      position:relative; z-index:1; letter-spacing:1px;
+      display:flex; align-items:center; gap:8px;
+    }
+    .w-dots span{
+      display:inline-block; width:5px; height:5px; border-radius:50%;
+      background:rgba(100,140,255,.6); animation:dotBlink 1.4s infinite;
+    }
+    .w-dots span:nth-child(2){animation-delay:.2s;}
+    .w-dots span:nth-child(3){animation-delay:.4s;}
+    @keyframes dotBlink{0%,80%,100%{opacity:.2;}40%{opacity:1;}}
 
-function getState() {
-  return {
-    type: state.type, url: state.url, degree: state.degree,
-    playing: state.playing, startedAt: state.startedAt, pausedAt: state.pausedAt,
-    volume: state.volume, muted: state.muted,
-    audioUrl: state.audioUrl, audioPlaying: state.audioPlaying,
-    audioStartedAt: state.audioStartedAt, audioPausedAt: state.audioPausedAt,
-    audioVolume: state.audioVolume, serverTime: Date.now()
-  };
-}
+    /* ─── MODE SCREEN ─── */
+    #modeScreen{
+      display:none;position:fixed;inset:0;z-index:9998;
+      flex-direction:column;align-items:center;justify-content:center;
+      gap:24px;
+      background:radial-gradient(ellipse 90% 80% at 50% 50%, #08102a 0%, #030508 100%);
+      overflow:hidden;
+    }
+    #modeScreen::before{
+      content:'';position:absolute;inset:0;pointer-events:none;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 80%, rgba(232,160,48,.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 80% 20%, rgba(30,63,255,.08) 0%, transparent 60%);
+    }
 
-io.on('connection', function(socket) {
+    .m-title{
+      font-family:'Oxanium',monospace; font-size:1rem; font-weight:800;
+      color:rgba(180,200,255,.7); letter-spacing:4px; text-transform:uppercase;
+      position:relative; z-index:1;
+    }
 
-  socket.on('registerHost', function() {
-    hostSockets[socket.id] = true;
-    if (viewers[socket.id]) { delete viewers[socket.id]; broadcastViewers(); }
+    .mode-cards{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1;}
+
+    .mode-card{
+      width:150px; padding:24px 16px;
+      border-radius:12px; border:1px solid;
+      display:flex; flex-direction:column; align-items:center; gap:10px;
+      cursor:pointer; transition:all .2s; position:relative; overflow:hidden;
+    }
+    .mode-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .2s;background:currentColor;}
+    .mode-card:hover::before{opacity:.06;}
+    .mode-card:active{transform:scale(.96);}
+
+    .mc-normal{
+      background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.15); color:#fff;
+    }
+    .mc-normal:hover{border-color:rgba(255,255,255,.35); box-shadow:0 0 30px rgba(255,255,255,.08);}
+
+    .mc-vr{
+      background:rgba(232,160,48,.07); border-color:rgba(232,160,48,.35); color:#e8a030;
+    }
+    .mc-vr:hover{border-color:rgba(232,160,48,.6); box-shadow:0 0 30px rgba(232,160,48,.15);}
+
+    .mc-icon{font-size:2.8rem; line-height:1;}
+    .mc-name{font-size:.95rem; font-weight:700; color:inherit;}
+    .mc-desc{font-size:.65rem; color:rgba(160,180,220,.5); text-align:center; line-height:1.4;}
+
+    /* ─── SWITCH BTN ─── */
+    #switchBtn{
+      display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      z-index:9997; padding:10px 24px;
+      background:rgba(0,0,0,.5); backdrop-filter:blur(16px);
+      border:1px solid rgba(232,160,48,.3); border-radius:50px;
+      color:rgba(232,160,48,.8); font-size:.82rem; font-weight:700;
+      cursor:pointer; font-family:'Noto Kufi Arabic',sans-serif;
+      transition:all .2s; white-space:nowrap;
+    }
+    #switchBtn:hover{border-color:rgba(232,160,48,.6);color:#e8a030;background:rgba(232,160,48,.08);}
+
+    a-scene{width:100vw;height:100vh;}
+  </style>
+</head>
+<body>
+
+<!-- WAIT SCREEN -->
+<div id="waitScreen">
+  <div class="w-ring"></div>
+  <div class="w-ring"></div>
+  <div class="w-ring"></div>
+  <div class="w-orb"></div>
+  <div class="w-title">VR 360</div>
+  <div class="w-sub">
+    في انتظار المضيف
+    <div class="w-dots"><span></span><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- MODE SCREEN -->
+<div id="modeScreen">
+  <div class="m-title">اختار وضع العرض</div>
+  <div class="mode-cards">
+    <div class="mode-card mc-normal" onclick="startMode('normal')">
+      <div class="mc-icon">📱</div>
+      <div class="mc-name">عادي</div>
+      <div class="mc-desc">شاشة واحدة<br>بدون نظارة</div>
+    </div>
+    <div class="mode-card mc-vr" onclick="startMode('vr')">
+      <div class="mc-icon">🥽</div>
+      <div class="mc-name">VR</div>
+      <div class="mc-desc">شاشتين<br>للنظارة</div>
+    </div>
+  </div>
+</div>
+
+<button id="switchBtn" onclick="showModeScreen()">🔄 غيّر الوضع</button>
+
+<a-scene id="scene"
+  vr-mode-ui="enabled:true;cardboardModeEnabled:true"
+  device-orientation-permission-ui="enabled:true"
+  style="display:none">
+  <a-assets>
+    <video id="video360"  crossorigin="anonymous" loop playsinline webkit-playsinline></video>
+    <video id="videoFlat" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
+  </a-assets>
+  <a-videosphere id="videoSphere" src="#video360"  visible="false"></a-videosphere>
+  <a-video       id="videoPanel"  src="#videoFlat" width="6" height="3.4" position="0 1.6 -4" visible="false"></a-video>
+  <a-sky         id="imageSky"    src="" visible="false" radius="100"></a-sky>
+  <a-image       id="imagePanel"  src="" width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
+  <a-entity id="rig" rotation="0 270 0" position="0 0 0">
+    <a-camera id="mainCamera" look-controls wasd-controls="enabled:false">
+      <a-cursor color="#e8a030" radius="0.005" position="0 0 -1" geometry="primitive:ring;radiusInner:0.004;radiusOuter:0.008" material="color:#e8a030;shader:flat;opacity:0.7" id="mainCursor"></a-cursor>
+    </a-camera>
+  </a-entity>
+</a-scene>
+
+<script>
+  const video360  = document.getElementById('video360');
+  const videoFlat = document.getElementById('videoFlat');
+  const scene     = document.getElementById('scene');
+  const rig       = document.getElementById('rig');
+  const videoSphere = document.getElementById('videoSphere');
+  const videoPanel  = document.getElementById('videoPanel');
+  const imageSky    = document.getElementById('imageSky');
+  const imagePanel  = document.getElementById('imagePanel');
+  const socket = io();
+
+  let sceneStarted=false, pendingData=null, currentMode=null;
+
+  const deviceName = navigator.userAgent.match(/iPhone|iPad/i) ? '📱 iPhone' :
+                     navigator.userAgent.match(/Android/i)     ? '📱 Android' :
+                     navigator.userAgent.match(/Windows/i)     ? '💻 Windows' :
+                     navigator.userAgent.match(/Mac/i)         ? '💻 Mac' : '📟 جهاز';
+
+  // حاول تتصل وكرر كل 3 ثواني لحد ما السيرفر يرد
+  var joinDone = false;
+  var joinInterval = setInterval(function() {
+    if (!joinDone) socket.emit('autoJoin', { name: deviceName });
+  }, 3000);
+  socket.emit('autoJoin', { name: deviceName });
+
+  socket.on('joinOk', function(data) {
+    joinDone = true;
+    clearInterval(joinInterval);
+    if (data && data.allow) {
+      document.getElementById('waitScreen').style.display = 'none';
+      sceneStarted = true;
+      showModeScreen();
+    } else {
+      document.getElementById('waitScreen').style.display = 'flex';
+    }
   });
 
-  socket.on('play', function(data) {
-    if (data && data.url !== undefined) state.url = data.url;
-    if (data && data.type !== undefined) state.type = data.type;
-    if (data && data.degree !== undefined) state.degree = data.degree;
-    if (data && data.volume !== undefined) state.volume = data.volume;
-    if (data && data.muted !== undefined) state.muted = data.muted;
-    state.playing = true;
-    state.startedAt = Date.now() - (state.pausedAt * 1000);
-    io.emit('state', getState());
+  // إخفاء الـ cursor على iOS
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isIOS) {
+    const cursor = document.getElementById('mainCursor');
+    if (cursor) cursor.setAttribute('visible', false);
+  }
+  let wakeLock=null;
+  async function requestWakeLock(){try{if('wakeLock' in navigator)wakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')requestWakeLock();});
+  requestWakeLock();
+
+  // Audio
+  const bgAudio=new Audio(); bgAudio.crossOrigin='anonymous';
+  socket.on('audioState',(data)=>{
+    if(!data.url){bgAudio.pause();bgAudio.src='';return;}
+    if(bgAudio.src!==data.url)bgAudio.src=data.url;
+    if(data.playing){
+      const offset=(Date.now()-data.serverTime)/1000;
+      const pos=(data.pausedAt||0)+offset;
+      bgAudio.currentTime=pos>0?pos:0;
+      bgAudio.volume=data.volume!==undefined?data.volume:1;
+      bgAudio.play().catch(()=>{});
+    } else {
+      bgAudio.pause();
+      if(data.pausedAt!==undefined)bgAudio.currentTime=data.pausedAt;
+    }
   });
+  socket.on('audioVolume',(data)=>{if(data.volume!==undefined)bgAudio.volume=data.volume;});
 
-  socket.on('pause', function() {
-    if (state.startedAt) state.pausedAt = (Date.now() - state.startedAt) / 1000;
-    state.playing = false;
-    io.emit('state', getState());
-  });
+  socket.on('kicked',()=>{window.location.href='about:blank';});
 
-  socket.on('restart', function(data) {
-    if (data && data.url !== undefined) state.url = data.url;
-    if (data && data.type !== undefined) state.type = data.type;
-    if (data && data.degree !== undefined) state.degree = data.degree;
-    if (data && data.volume !== undefined) state.volume = data.volume;
-    if (data && data.muted !== undefined) state.muted = data.muted;
-    state.playing = true; state.pausedAt = 0; state.startedAt = Date.now();
-    io.emit('state', getState());
-  });
+  function showModeScreen(){
+    scene.style.display='none';
+    document.getElementById('switchBtn').style.display='none';
+    document.getElementById('waitScreen').style.display='none';
+    document.getElementById('modeScreen').style.display='flex';
+    socket.emit('statusUpdate',{status:'اختيار وضع'});
+  }
+  function startMode(mode){
+    currentMode=mode;
+    document.getElementById('modeScreen').style.display='none';
+    scene.style.display='block';
+    document.getElementById('switchBtn').style.display='block';
+    socket.emit('statusUpdate',{status:mode==='vr'?'VR':'عادي'});
+    if(mode==='vr')scene.enterVR();
+    if(pendingData)applyState(pendingData);
+  }
 
-  socket.on('show', function(data) {
-    if (data && data.url !== undefined) state.url = data.url;
-    if (data && data.type !== undefined) state.type = data.type;
-    if (data && data.degree !== undefined) state.degree = data.degree;
-    if (data && data.volume !== undefined) state.volume = data.volume;
-    if (data && data.muted !== undefined) state.muted = data.muted;
-    state.playing = true; state.startedAt = Date.now(); state.pausedAt = 0;
-    io.emit('state', getState());
-  });
+  function setCameraYaw(degree){rig.setAttribute('rotation',{x:0,y:degree,z:0});}
 
-  socket.on('seek', function(data) {
-    state.pausedAt = data.seconds;
-    state.startedAt = Date.now() - (data.seconds * 1000);
-    io.emit('state', getState());
-  });
+  function applyVolume(video,volume,muted){
+    video.volume=Math.max(0,Math.min(1,volume??1));
+    video.muted=muted??false;
+    video.addEventListener('loadedmetadata',()=>{
+      if(video.duration&&!isNaN(video.duration))socket.emit('reportDuration',{duration:video.duration});
+    },{once:true});
+    if(video.duration&&!isNaN(video.duration))socket.emit('reportDuration',{duration:video.duration});
+  }
 
-  socket.on('setVolume', function(data) {
-    if (data && data.volume !== undefined) state.volume = data.volume;
-    if (data && data.muted !== undefined) state.muted = data.muted;
-    io.emit('setVolume', { volume: state.volume, muted: state.muted });
-  });
+  function hideAll(){
+    videoSphere.setAttribute('visible',false); videoPanel.setAttribute('visible',false);
+    imageSky.setAttribute('visible',false);    imagePanel.setAttribute('visible',false);
+    video360.pause(); videoFlat.pause();
+  }
 
-  socket.on('syncAll', function() { io.emit('sync', getState()); });
+  function applyState(data){
+    hideAll(); setCameraYaw(data.degree||0);
+    var s = (data.size||100)/100;
+    videoPanel.setAttribute('width', 6*s); videoPanel.setAttribute('height', 3.4*s);
+    imagePanel.setAttribute('width', 5*s); imagePanel.setAttribute('height', 3*s);
+    if(data.type==='video'){
+      if(video360.src!==data.url){video360.src=data.url;video360.load();}
+      videoSphere.setAttribute('visible',true); applyVolume(video360,data.volume,data.muted);
+      if(data.playing&&data.startedAt){
+        const e=(Date.now()-data.startedAt)/1000; video360.currentTime=Math.max(0,e);
+        video360.play().catch(()=>{video360.muted=true;video360.play();});
+      } else { if(data.pausedAt)video360.currentTime=data.pausedAt; video360.pause(); }
+    } else if(data.type==='videoFlat'){
+      if(videoFlat.src!==data.url){videoFlat.src=data.url;videoFlat.load();}
+      videoPanel.setAttribute('visible',true); applyVolume(videoFlat,data.volume,data.muted);
+      if(data.playing&&data.startedAt){
+        const e=(Date.now()-data.startedAt)/1000; videoFlat.currentTime=Math.max(0,e);
+        videoFlat.play().catch(()=>{videoFlat.muted=true;videoFlat.play();});
+      } else { if(data.pausedAt)videoFlat.currentTime=data.pausedAt; videoFlat.pause(); }
+    } else if(data.type==='image360'){
+      imageSky.setAttribute('src',data.url); imageSky.setAttribute('visible',true);
+    } else if(data.type==='image'){
+      imagePanel.setAttribute('src',data.url); imagePanel.setAttribute('visible',true);
+    }
+  }
 
-  socket.on('kickAll', function() { io.emit('kicked'); });
-
-  socket.on('kickOne', function(data) {
-    var target = io.sockets.sockets.get(data.id);
-    if (target) { target.emit('kicked'); delete viewers[data.id]; broadcastViewers(); }
-  });
-
-  socket.on('playAudio', function(data) {
-    if (data && data.url !== undefined) state.audioUrl = data.url;
-    if (data && data.volume !== undefined) state.audioVolume = data.volume;
-    state.audioPlaying = true;
-    state.audioStartedAt = Date.now() - (state.audioPausedAt * 1000);
-    io.emit('audioState', { playing: true, url: state.audioUrl, startedAt: state.audioStartedAt, pausedAt: state.audioPausedAt, volume: state.audioVolume, serverTime: Date.now() });
-  });
-
-  socket.on('pauseAudio', function() {
-    if (state.audioStartedAt) state.audioPausedAt = (Date.now() - state.audioStartedAt) / 1000;
-    state.audioPlaying = false;
-    io.emit('audioState', { playing: false, pausedAt: state.audioPausedAt, volume: state.audioVolume });
-  });
-
-  socket.on('restartAudio', function(data) {
-    if (data && data.url !== undefined) state.audioUrl = data.url;
-    if (data && data.volume !== undefined) state.audioVolume = data.volume;
-    state.audioPlaying = true; state.audioPausedAt = 0; state.audioStartedAt = Date.now();
-    io.emit('audioState', { playing: true, url: state.audioUrl, startedAt: state.audioStartedAt, pausedAt: 0, volume: state.audioVolume, serverTime: Date.now() });
-  });
-
-  socket.on('stopAudio', function() {
-    state.audioPlaying = false; state.audioPausedAt = 0; state.audioStartedAt = null;
-    io.emit('audioState', { playing: false, stop: true, volume: state.audioVolume });
-  });
-
-  socket.on('seekAudio', function(data) {
-    state.audioPausedAt = data.seconds;
-    state.audioStartedAt = Date.now() - (data.seconds * 1000);
-    io.emit('audioState', { playing: state.audioPlaying, url: state.audioUrl, startedAt: state.audioStartedAt, pausedAt: state.audioPausedAt, volume: state.audioVolume, serverTime: Date.now() });
-  });
+  function handleState(data){
+    if(!data.url)return; pendingData=data;
+    if(sceneStarted&&currentMode)applyState(data);
+  }
 
   socket.on('setSize', function(data) {
-    io.emit('setSize', { size: data.size });
+    var s = (data.size || 100) / 100;
+    // غير الحجم الفعلي + scale مع بعض عشان يشتغل في العادي والـ VR
+    videoPanel.setAttribute('width',  6 * s);
+    videoPanel.setAttribute('height', 3.4 * s);
+    videoPanel.setAttribute('scale',  '1 1 1');
+    imagePanel.setAttribute('width',  5 * s);
+    imagePanel.setAttribute('height', 3 * s);
+    imagePanel.setAttribute('scale',  '1 1 1');
   });
 
-  socket.on('setAudioVolume', function(data) {
-    if (data && data.volume !== undefined) state.audioVolume = data.volume;
-    io.emit('audioVolume', { volume: state.audioVolume });
+  socket.on('setVolume',(data)=>{
+    [video360,videoFlat].forEach(v=>{v.volume=Math.max(0,Math.min(1,data.volume??1));v.muted=data.muted??false;});
   });
 
-  socket.on('setAllowJoin', function(data) {
-    allowJoin = data.allow;
-    var ids = Object.keys(viewers);
-    for (var i = 0; i < ids.length; i++) {
-      var s = io.sockets.sockets.get(ids[i]);
-      if (allowJoin) {
-        if (s) s.emit('sessionStart');
-        if (viewers[ids[i]]) viewers[ids[i]].status = 'اختيار وضع';
-      } else {
-        if (s) s.emit('sessionStop');
-        if (viewers[ids[i]]) viewers[ids[i]].status = 'انتظار';
-      }
-    }
-    broadcastViewers();
-    socket.emit('joinToggleOk', { allow: allowJoin });
+  socket.on('state',handleState);
+  socket.on('sync',handleState);
+
+  socket.on('sessionStart',()=>{
+    sceneStarted = true;
+    document.getElementById('waitScreen').style.display='none';
+    document.getElementById('modeScreen').style.display='none';
+    showModeScreen();
   });
 
-  socket.on('autoJoin', function(data) {
-    if (hostSockets[socket.id]) return;
-    if (!viewers[socket.id]) {
-      viewerCounter++;
-      var name = (data && data.name) ? data.name : ('جهاز ' + viewerCounter);
-      viewers[socket.id] = { id: socket.id, num: viewerCounter, name: name, status: 'انتظار' };
-      broadcastViewers();
-    }
-    socket.emit('joinOk', { allow: allowJoin });
-    socket.emit('state', getState());
-    if (state.audioUrl) {
-      socket.emit('audioState', { playing: state.audioPlaying, url: state.audioUrl, startedAt: state.audioStartedAt, pausedAt: state.audioPausedAt, volume: state.audioVolume, serverTime: Date.now() });
-    }
+  socket.on('sessionStop',()=>{
+    video360.pause(); videoFlat.pause(); bgAudio.pause();
+    scene.style.display='none';
+    document.getElementById('switchBtn').style.display='none';
+    document.getElementById('modeScreen').style.display='none';
+    document.getElementById('waitScreen').style.display='flex';
+    sceneStarted=false; currentMode=null; pendingData=null;
+    socket.emit('statusUpdate',{status:'انتظار'});
   });
-
-  socket.on('statusUpdate', function(data) {
-    if (viewers[socket.id]) { viewers[socket.id].status = data.status; broadcastViewers(); }
-  });
-
-  socket.on('reportDuration', function(data) { io.emit('videoDuration', data); });
-
-  socket.on('disconnect', function() {
-    delete viewers[socket.id];
-    delete hostSockets[socket.id];
-    broadcastViewers();
-  });
-
-});
-
-var PORT = process.env.PORT || 3000;
-server.listen(PORT, function() { console.log('Server on port ' + PORT); });
+</script>
+</body>
+</html>
