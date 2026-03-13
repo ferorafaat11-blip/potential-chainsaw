@@ -1,287 +1,175 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>VR 360</title>
-  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:#000; overflow:hidden; }
-    #waitScreen {
-      position:fixed; inset:0; background:#050810;
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      z-index:9999; color:#fff;
-    }
-    .logo { font-size:2rem; font-weight:900; color:#00f5ff; margin-bottom:10px; }
-    .wait-text { color:#4a5568; font-size:0.9rem; margin-bottom:30px; }
-    .pulse { width:60px; height:60px; border-radius:50%; background:rgba(0,245,255,0.1); border:2px solid #00f5ff; animation:pulse 1.5s infinite; }
-    @keyframes pulse {
-      0%,100%{box-shadow:0 0 0 0 rgba(0,245,255,0.4);transform:scale(1);}
-      50%{box-shadow:0 0 0 20px rgba(0,245,255,0);transform:scale(1.05);}
-    }
-    #modeScreen {
-      display:none; position:fixed; inset:0; background:#050810;
-      flex-direction:column; align-items:center; justify-content:center;
-      z-index:9998; gap:20px;
-    }
-    .mode-title { color:#fff; font-size:1.3rem; font-weight:700; margin-bottom:10px; }
-    .mode-btn { width:260px; padding:18px; border:none; border-radius:16px; font-size:1.1rem; font-weight:900; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; }
-    .mode-normal { background:#fff; color:#000; }
-    .mode-vr { background:#00f5ff; color:#000; }
-    .mode-desc { font-size:0.75rem; font-weight:400; opacity:0.6; }
-    #switchBtn {
-      display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
-      z-index:9997; padding:10px 22px; background:rgba(0,0,0,0.6); color:#fff;
-      border:1px solid rgba(255,255,255,0.3); font-size:0.85rem; font-weight:700;
-      border-radius:50px; cursor:pointer; backdrop-filter:blur(10px);
-    }
-    a-scene { width:100vw; height:100vh; }
-  </style>
-</head>
-<body>
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 
-<div id="waitScreen">
-  <div class="logo">🥽 VR 360</div>
-  <div class="wait-text">في انتظار المضيف...</div>
-  <div class="pulse"></div>
-</div>
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
-<div id="modeScreen">
-  <div class="mode-title">اختار وضع العرض</div>
-  <button class="mode-btn mode-normal" onclick="startMode('normal')">📱 وضع عادي<span class="mode-desc">شاشة واحدة</span></button>
-  <button class="mode-btn mode-vr" onclick="startMode('vr')">🥽 وضع VR<span class="mode-desc">شاشتين للنظارة</span></button>
-</div>
+app.use(express.static('public'));
 
-<button id="switchBtn" onclick="showModeScreen()">🔄 غيّر الوضع</button>
+let state = {
+  type:'video', url:'', degree:0,
+  playing:false, startedAt:null, pausedAt:0,
+  volume:1, muted:false,
+  audioUrl:'', audioPlaying:false, audioStartedAt:null, audioPausedAt:0, audioVolume:1
+};
 
-<a-scene id="scene"
-  vr-mode-ui="enabled:true; cardboardModeEnabled:true"
-  device-orientation-permission-ui="enabled:true"
-  style="display:none">
-  <a-assets>
-    <video id="video360"  crossorigin="anonymous" loop playsinline webkit-playsinline></video>
-    <video id="videoFlat" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
-  </a-assets>
+let viewers = {}; // { socketId: { num, status } }
+let viewerCounter = 0;
 
-  <!--
-    الفيديو 360 بدون أي rotation — هنتحكم في الاتجاه عن طريق الـ rig بس
-    مش محتاجين rotation="0 180 0" لأنه بيعمل offset
-  -->
-  <a-videosphere id="videoSphere" src="#video360" visible="false"></a-videosphere>
-  <a-video       id="videoPanel"  src="#videoFlat" width="6" height="3.4" position="0 1.6 -4" visible="false"></a-video>
-  <a-sky         id="imageSky"    src="" visible="false" radius="100"></a-sky>
-  <a-image       id="imagePanel"  src="" width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
+function broadcastViewers() {
+  const list = Object.values(viewers);
+  io.emit('viewers', list.length);
+  io.emit('viewerList', list);
+}
 
-  <!--
-    rig: بيحمل الكاميرا
-    rotation.y على الـ rig = الاتجاه الابتدائي
-    A-Frame Y: موجب = يسار (عكس عقارب الساعة)
-    الـ offset الثابت 180° موجود لأن الفيديو بيبدأ من الجنوب
-    فالمعادلة: rig.y = 180 - degree
-  -->
-  <a-entity id="rig" rotation="0 270 0" position="0 0 0">
-    <a-camera id="mainCamera" look-controls wasd-controls="enabled:false">
-      <a-cursor color="#00f5ff"></a-cursor>
-    </a-camera>
-  </a-entity>
-</a-scene>
+io.on('connection', (socket) => {
 
-<script>
-  const video360  = document.getElementById('video360');
-  const videoFlat = document.getElementById('videoFlat');
-  const scene       = document.getElementById('scene');
-  const rig         = document.getElementById('rig');
-  const videoSphere = document.getElementById('videoSphere');
-  const videoPanel  = document.getElementById('videoPanel');
-  const imageSky    = document.getElementById('imageSky');
-  const imagePanel  = document.getElementById('imagePanel');
-  const socket = io();
-
-  let sceneStarted = false, pendingData = null, currentMode = null;
-
-  // اتصل بالسيرفر تلقائي
-  socket.emit('autoJoin');
-  socket.on('noRoom', () => setTimeout(() => socket.emit('autoJoin'), 3000));
-  socket.on('joinOk', () => {});
-
-  // عنصر الصوت المنفصل
-  const audioEl = new Audio();
-  audioEl.preload = 'auto';
-
-  socket.on('audioState', (data) => {
-    if (!data.url) { audioEl.pause(); audioEl.src = ''; return; }
-    if (audioEl.src !== data.url) { audioEl.src = data.url; audioEl.load(); }
-    audioEl.volume = Math.max(0, Math.min(1, data.volume ?? 0.8));
-    if (data.playing && data.startedAt) {
-      const elapsed = (Date.now() - data.startedAt) / 1000;
-      audioEl.currentTime = Math.max(0, elapsed);
-      audioEl.play().catch(() => {});
-    } else if (!data.playing) {
-      if (data.pausedAt) audioEl.currentTime = data.pausedAt;
-      audioEl.pause();
-    }
+  // ===== HOST =====
+  socket.on('play', (data) => {
+    if (data?.url)    state.url    = data.url;
+    if (data?.type)   state.type   = data.type;
+    if (data?.degree  !== undefined) state.degree  = data.degree;
+    if (data?.volume  !== undefined) state.volume  = data.volume;
+    if (data?.muted   !== undefined) state.muted   = data.muted;
+    state.playing   = true;
+    state.startedAt = Date.now() - (state.pausedAt * 1000);
+    io.emit('state', { ...state, serverTime: Date.now() });
   });
 
-  socket.on('audioVolume', (data) => {
-    audioEl.volume = Math.max(0, Math.min(1, data.volume ?? 0.8));
+  socket.on('pause', () => {
+    if (state.startedAt) state.pausedAt = (Date.now() - state.startedAt) / 1000;
+    state.playing = false;
+    io.emit('state', { ...state, serverTime: Date.now() });
   });
 
-  // لو اتطرد
-  socket.on('kicked', () => {
-    window.location.href = 'about:blank';
+  socket.on('restart', (data) => {
+    if (data?.url)    state.url    = data.url;
+    if (data?.type)   state.type   = data.type;
+    if (data?.degree  !== undefined) state.degree  = data.degree;
+    if (data?.volume  !== undefined) state.volume  = data.volume;
+    if (data?.muted   !== undefined) state.muted   = data.muted;
+    state.playing   = true;
+    state.pausedAt  = 0;
+    state.startedAt = Date.now();
+    io.emit('state', { ...state, serverTime: Date.now() });
   });
 
-  function showModeScreen() {
-    scene.style.display = 'none';
-    document.getElementById('switchBtn').style.display = 'none';
-    document.getElementById('modeScreen').style.display = 'flex';
-    socket.emit('statusUpdate', { status: 'اختيار وضع' });
-  }
+  socket.on('show', (data) => {
+    state.url  = data.url;
+    state.type = data.type;
+    if (data?.degree !== undefined) state.degree = data.degree;
+    if (data?.volume !== undefined) state.volume = data.volume;
+    if (data?.muted  !== undefined) state.muted  = data.muted;
+    state.playing   = true;
+    state.startedAt = Date.now();
+    state.pausedAt  = 0;
+    io.emit('state', { ...state, serverTime: Date.now() });
+  });
 
-  function startMode(mode) {
-    currentMode = mode;
-    document.getElementById('modeScreen').style.display = 'none';
-    scene.style.display = 'block';
-    document.getElementById('switchBtn').style.display = 'block';
-    socket.emit('statusUpdate', { status: mode === 'vr' ? 'VR' : 'عادي' });
-    if (mode === 'vr') scene.enterVR();
-    if (pendingData) applyState(pendingData);
-  }
-
-  function setCameraYaw(degree) {
-    // offset 180 لأن الـ videosphere بيبدأ من الجنوب بدون rotation
-    // offset = 270 لأن الـ default بيبص غرب
-    // 0°  → rigY = 270  → شمال ✓
-    // 90° → rigY = 180  → شرق  ✓
-    // 180°→ rigY = 90   → جنوب ✓
-    // 270°→ rigY = 0    → غرب  ✓
-    rig.setAttribute('rotation', { x: 0, y: degree, z: 0 });
-  }
-
-  function applyVolume(video, volume, muted) {
-    video.volume = Math.max(0, Math.min(1, volume ?? 1));
-    video.muted  = muted ?? false;
-    video.addEventListener('loadedmetadata', () => {
-      if (video.duration && !isNaN(video.duration))
-        socket.emit('reportDuration', { duration: video.duration });
-    }, { once: true });
-    if (video.duration && !isNaN(video.duration))
-      socket.emit('reportDuration', { duration: video.duration });
-  }
-
-  function hideAll() {
-    videoSphere.setAttribute('visible', false);
-    videoPanel.setAttribute('visible', false);
-    imageSky.setAttribute('visible', false);
-    imagePanel.setAttribute('visible', false);
-    video360.pause(); videoFlat.pause();
-  }
-
-  function applyState(data) {
-    hideAll();
-    setCameraYaw(data.degree || 0);
-
-    if (data.type === 'video') {
-      if (video360.src !== data.url) { video360.src = data.url; video360.load(); }
-      videoSphere.setAttribute('visible', true);
-      applyVolume(video360, data.volume, data.muted);
-      if (data.playing && data.startedAt) {
-        const elapsed = (Date.now() - data.startedAt) / 1000;
-        video360.currentTime = Math.max(0, elapsed);
-        video360.play().catch(() => { video360.muted = true; video360.play(); });
-      } else {
-        if (data.pausedAt) video360.currentTime = data.pausedAt;
-        video360.pause();
-      }
-
-    } else if (data.type === 'videoFlat') {
-      if (videoFlat.src !== data.url) { videoFlat.src = data.url; videoFlat.load(); }
-      videoPanel.setAttribute('visible', true);
-      applyVolume(videoFlat, data.volume, data.muted);
-      if (data.playing && data.startedAt) {
-        const elapsed = (Date.now() - data.startedAt) / 1000;
-        videoFlat.currentTime = Math.max(0, elapsed);
-        videoFlat.play().catch(() => { videoFlat.muted = true; videoFlat.play(); });
-      } else {
-        if (data.pausedAt) videoFlat.currentTime = data.pausedAt;
-        videoFlat.pause();
-      }
-
-    } else if (data.type === 'image360') {
-      imageSky.setAttribute('src', data.url);
-      imageSky.setAttribute('visible', true);
-
-    } else if (data.type === 'image') {
-      imagePanel.setAttribute('src', data.url);
-      imagePanel.setAttribute('visible', true);
-    }
-  }
-
-  function handleState(data) {
-    if (!data.url) return;
-    pendingData = data;
-    if (!sceneStarted) {
-      sceneStarted = true;
-      document.getElementById('waitScreen').style.display = 'none';
-      showModeScreen();
-    } else if (currentMode) {
-      applyState(data);
-    }
-  }
+  socket.on('seek', (data) => {
+    state.pausedAt  = data.seconds;
+    state.startedAt = Date.now() - (data.seconds * 1000);
+    io.emit('state', { ...state, serverTime: Date.now() });
+  });
 
   socket.on('setVolume', (data) => {
-    [video360, videoFlat].forEach(v => {
-      v.volume = Math.max(0, Math.min(1, data.volume ?? 1));
-      v.muted  = data.muted ?? false;
-    });
+    if (data?.volume !== undefined) state.volume = data.volume;
+    if (data?.muted  !== undefined) state.muted  = data.muted;
+    io.emit('setVolume', { volume: state.volume, muted: state.muted });
   });
 
-  // ===== الصوت المنفصل =====
-  const bgAudio = new Audio();
-  bgAudio.crossOrigin = 'anonymous';
+  socket.on('syncAll', () => {
+    io.emit('sync', { ...state, serverTime: Date.now() });
+  });
 
-  socket.on('audioState', (data) => {
-    if (data.url && bgAudio.src !== data.url) bgAudio.src = data.url;
-    if (data.playing) {
-      const offset = (Date.now() - data.serverTime) / 1000;
-      const pos = (data.pausedAt || 0) + offset;
-      bgAudio.currentTime = pos > 0 ? pos : 0;
-      bgAudio.volume = data.volume !== undefined ? data.volume : 1;
-      bgAudio.play().catch(()=>{});
-    } else {
-      bgAudio.pause();
-      if (data.pausedAt !== undefined) bgAudio.currentTime = data.pausedAt;
+  socket.on('startSession', () => {
+    io.emit('sessionStart');
+    Object.keys(viewers).forEach(id => { if(viewers[id]) viewers[id].status = 'اختيار وضع'; });
+    broadcastViewers();
+  });
+
+  socket.on('stopSession', () => {
+    state.playing = false; state.startedAt = null; state.pausedAt = 0;
+    state.audioPlaying = false; state.audioStartedAt = null; state.audioPausedAt = 0;
+    io.emit('sessionStop');
+    Object.keys(viewers).forEach(id => { if(viewers[id]) viewers[id].status = 'انتظار'; });
+    broadcastViewers();
+  });
+
+  socket.on('kickAll', () => {
+    io.emit('kicked');
+  });
+
+  // ===== AUDIO =====
+  socket.on('playAudio', (data) => {
+    if (data?.url) state.audioUrl = data.url;
+    if (data?.volume !== undefined) state.audioVolume = data.volume;
+    state.audioPlaying   = true;
+    state.audioStartedAt = Date.now() - (state.audioPausedAt * 1000);
+    io.emit('audioState', { playing:true, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:state.audioPausedAt, volume:state.audioVolume, serverTime:Date.now() });
+  });
+
+  socket.on('pauseAudio', () => {
+    if (state.audioStartedAt) state.audioPausedAt = (Date.now() - state.audioStartedAt) / 1000;
+    state.audioPlaying = false;
+    io.emit('audioState', { playing:false, pausedAt:state.audioPausedAt, volume:state.audioVolume });
+  });
+
+  socket.on('restartAudio', (data) => {
+    if (data?.url) state.audioUrl = data.url;
+    if (data?.volume !== undefined) state.audioVolume = data.volume;
+    state.audioPlaying   = true;
+    state.audioPausedAt  = 0;
+    state.audioStartedAt = Date.now();
+    io.emit('audioState', { playing:true, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:0, volume:state.audioVolume, serverTime:Date.now() });
+  });
+
+  socket.on('stopAudio', () => {
+    state.audioPlaying = false; state.audioPausedAt = 0; state.audioStartedAt = null;
+    io.emit('audioState', { playing:false, stop:true, volume:state.audioVolume });
+  });
+
+  socket.on('seekAudio', (data) => {
+    state.audioPausedAt  = data.seconds;
+    state.audioStartedAt = Date.now() - (data.seconds * 1000);
+    io.emit('audioState', { playing:state.audioPlaying, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:state.audioPausedAt, volume:state.audioVolume, serverTime:Date.now() });
+  });
+
+  socket.on('setAudioVolume', (data) => {
+    if (data?.volume !== undefined) state.audioVolume = data.volume;
+    io.emit('audioVolume', { volume: state.audioVolume });
+  });
+
+  // ===== VIEWER =====
+  socket.on('autoJoin', () => {
+    viewerCounter++;
+    viewers[socket.id] = { id: socket.id, num: viewerCounter, status: 'انتظار' };
+    broadcastViewers();
+    socket.emit('joinOk');
+    socket.emit('state', { ...state, serverTime: Date.now() });
+    if (state.audioUrl) {
+      socket.emit('audioState', { playing:state.audioPlaying, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:state.audioPausedAt, volume:state.audioVolume, serverTime:Date.now() });
     }
   });
 
-  socket.on('audioVolume', (data) => {
-    if (data.volume !== undefined) bgAudio.volume = data.volume;
-  });
-
-  scene.addEventListener('exit-vr', () => { currentMode = 'normal'; });
-  socket.on('state', handleState);
-  socket.on('sync',  handleState);
-
-  // أوامر الجلسة من المضيف
-  socket.on('sessionStart', () => {
-    if (!sceneStarted) {
-      sceneStarted = true;
-      document.getElementById('waitScreen').style.display = 'none';
+  socket.on('statusUpdate', (data) => {
+    if (viewers[socket.id]) {
+      viewers[socket.id].status = data.status;
+      broadcastViewers();
     }
-    showModeScreen();
   });
 
-  socket.on('sessionStop', () => {
-    video360.pause(); videoFlat.pause(); bgAudio.pause();
-    scene.style.display = 'none';
-    document.getElementById('switchBtn').style.display = 'none';
-    document.getElementById('modeScreen').style.display = 'none';
-    document.getElementById('waitScreen').style.display = 'flex';
-    sceneStarted = false; currentMode = null; pendingData = null;
-    socket.emit('statusUpdate', { status: 'انتظار' });
+  socket.on('reportDuration', (data) => {
+    io.emit('videoDuration', data);
   });
-</script>
-</body>
-</html>
+
+  socket.on('disconnect', () => {
+    delete viewers[socket.id];
+    broadcastViewers();
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log('Server on port ' + PORT));
