@@ -34,7 +34,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 .hb.kick:hover{background:var(--red);color:#fff;}
 
 /* LAYOUT */
-.main{position:relative;z-index:5;display:grid;grid-template-columns:1fr 290px;grid-template-rows:auto auto 1fr auto;gap:10px;padding:10px;flex:1;}
+.main{position:relative;z-index:5;display:grid;grid-template-columns:1fr 290px;grid-template-rows:auto auto auto 1fr auto;gap:10px;padding:10px;flex:1;}
 
 /* TIMER */
 .timer-card{grid-column:1;grid-row:1;background:var(--s1);border:1px solid var(--br);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:14px;}
@@ -85,7 +85,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 .amuteb.on{background:var(--ac2);color:#fff;}
 
 /* MEDIA LIST */
-.media-card{grid-column:1;grid-row:3;background:var(--s1);border:1px solid var(--br);border-radius:9px;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.media-card{grid-column:1;grid-row:4;background:var(--s1);border:1px solid var(--br);border-radius:9px;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
 .card-hdr{padding:8px 12px;border-bottom:1px solid var(--br);font-size:.66rem;letter-spacing:2px;color:var(--mu);font-family:'Space Mono',monospace;flex-shrink:0;}
 .mscroll{flex:1;overflow-y:auto;padding:6px;}
 .mscroll::-webkit-scrollbar{width:3px;} .mscroll::-webkit-scrollbar-thumb{background:var(--br);}
@@ -102,10 +102,10 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 .empty{color:var(--mu);font-size:.78rem;text-align:center;padding:20px;}
 
 /* STATUS BAR */
-.sbar{grid-column:1;grid-row:4;background:var(--s1);border:1px solid var(--br);border-radius:7px;padding:6px 12px;font-size:.7rem;color:var(--mu);font-family:'Space Mono',monospace;display:flex;align-items:center;gap:6px;}
+.sbar{grid-column:1;grid-row:5;background:var(--s1);border:1px solid var(--br);border-radius:7px;padding:6px 12px;font-size:.7rem;color:var(--mu);font-family:'Space Mono',monospace;display:flex;align-items:center;gap:6px;}
 
 /* RIGHT COL */
-.rcol{grid-column:2;grid-row:1/5;display:flex;flex-direction:column;gap:8px;min-height:0;}
+.rcol{grid-column:2;grid-row:1/6;display:flex;flex-direction:column;gap:8px;min-height:0;}
 
 /* VIEWERS */
 .viewers-card{background:var(--s1);border:1px solid var(--br);border-radius:10px;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;}
@@ -141,12 +141,12 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
 
 /* RESPONSIVE MOBILE */
 @media(max-width:700px){
-  .main{grid-template-columns:1fr;grid-template-rows:auto auto auto auto auto;}
+  .main{grid-template-columns:1fr;grid-template-rows:auto auto auto auto auto auto;}
   .timer-card{grid-column:1;grid-row:1;}
   .ctrl-row{grid-column:1;grid-row:2;}
-  .media-card{grid-column:1;grid-row:3;min-height:180px;}
-  .sbar{grid-column:1;grid-row:4;}
-  .rcol{grid-column:1;grid-row:5;flex-direction:row;flex-wrap:wrap;min-height:unset;}
+  .media-card{grid-column:1;grid-row:4;min-height:180px;}
+  .sbar{grid-column:1;grid-row:5;}
+  .rcol{grid-column:1;grid-row:6;flex-direction:row;flex-wrap:wrap;min-height:unset;}
   .viewers-card{flex:1;min-width:200px;min-height:150px;}
   .add-card{flex:1;min-width:200px;}
   .timer{font-size:1.4rem;min-width:110px;}
@@ -243,6 +243,19 @@ body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradi
     </div>
   </div>
 
+    <!-- AUDIO LIST -->
+    <div class="media-card" style="grid-column:1;grid-row:3;min-height:120px;">
+      <div class="card-hdr" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>🎵 قائمة الأصوات</span>
+      </div>
+      <div class="mscroll" id="audioList"></div>
+      <div style="padding:8px;border-top:1px solid var(--br);display:flex;gap:5px;flex-shrink:0;">
+        <input class="mi" id="aName" placeholder="الاسم" style="flex:1;direction:rtl;" />
+        <input class="mi" id="aUrlIn" placeholder="رابط mp3..." style="flex:2;" />
+        <button class="mb" onclick="addAudio()">➕</button>
+      </div>
+    </div>
+
   <!-- MEDIA -->
   <div class="media-card">
     <div class="card-hdr">📁 المحتوى</div>
@@ -302,7 +315,8 @@ let dur=0, dragging=false;
 const TI={video:'🌐',videoFlat:'🎬',image:'🖼️',image360:'🌐'};
 const TL={video:'فيديو 360°',videoFlat:'فيديو عادي',image:'صورة عادية',image360:'صورة 360°'};
 
-let ml=[{name:'جولة المعبد',type:'video',degree:0,url:'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4'}];
+const DEFAULT_ML=[{name:'جولة المعبد',type:'video',degree:0,url:'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4'}];
+let ml=[];try{const s=localStorage.getItem('vr_ml');ml=s?JSON.parse(s):DEFAULT_ML;}catch{ml=DEFAULT_ML;}
 
 // ===== صوت الفيديو =====
 function setVolume(v){vol=+v;document.getElementById('volVal').textContent=v+'%';if(v>0)muted=false;updMute();socket.emit('setVolume',{volume:v/100,muted});}
@@ -393,6 +407,8 @@ socket.on('viewers',c=>document.getElementById('vCount').textContent=c);
 function selType(t){selType_=t;['video','videoFlat','image','image360'].forEach(x=>document.getElementById('t_'+x)?.classList.remove('sel'));document.getElementById('t_'+t)?.classList.add('sel');}
 function setDeg(v){selDeg=v;document.getElementById('degSl').value=v;document.getElementById('degVal').textContent=v+'°';document.getElementById('degSv').textContent=v+'°';}
 function cmp(d){if(d<=22||d>=338)return'⬆️';if(d<68)return'↗️';if(d<=112)return'➡️';if(d<158)return'↘️';if(d<=202)return'⬇️';if(d<248)return'↙️';if(d<=292)return'⬅️';return'↖️';}
+function saveML(){try{localStorage.setItem('vr_ml',JSON.stringify(ml));}catch{}}
+function saveAL(){try{localStorage.setItem('vr_al',JSON.stringify(al));}catch{}}
 function renderML(){
   const el=document.getElementById('mediaList');
   if(!ml.length){el.innerHTML='<div class="empty">لا يوجد محتوى</div>';return;}
@@ -402,9 +418,41 @@ function renderML(){
     <div class="macts"><button class="pbtn" onclick="event.stopPropagation();showM(${i})">▶</button><button class="dbtn" onclick="event.stopPropagation();delM(${i})">🗑</button></div>
   </div>`).join('');
 }
-function addMedia(){const n=document.getElementById('mName').value.trim(),u=document.getElementById('mUrl').value.trim();if(!n||!u)return alert('حط اسم ورابط!');ml.push({name:n,type:selType_,url:u,degree:selDeg});document.getElementById('mName').value='';document.getElementById('mUrl').value='';setDeg(0);renderML();st('✅ '+n);}
-function delM(i){ml.splice(i,1);if(ci>=ml.length)ci=Math.max(0,ml.length-1);renderML();}
+function addMedia(){const n=document.getElementById('mName').value.trim(),u=document.getElementById('mUrl').value.trim();if(!n||!u)return alert('حط اسم ورابط!');ml.push({name:n,type:selType_,url:u,degree:selDeg});document.getElementById('mName').value='';document.getElementById('mUrl').value='';setDeg(0);saveML();renderML();st('✅ '+n);}
+function delM(i){ml.splice(i,1);if(ci>=ml.length)ci=Math.max(0,ml.length-1);saveML();renderML();}
 function showM(i){ci=i;const m=ml[i];renderML();pausedAt=0;startedAt=Date.now();playing=true;const e=(m.type==='image'||m.type==='image360')?'show':'restart';socket.emit(e,{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted});startTimer();st('▶ '+m.name);}
+
+// ===== قائمة الصوت =====
+let al = [];
+try{const s=localStorage.getItem('vr_al');if(s)al=JSON.parse(s);}catch{}
+
+function renderAL(){
+  const el=document.getElementById('audioList');
+  if(!al.length){el.innerHTML='<div class="empty">لا يوجد أصوات</div>';return;}
+  el.innerHTML=al.map((a,i)=>`<div class="mitem">
+    <div class="mic">🎵</div>
+    <div class="min"><div class="mname">${a.name}</div><div class="mmeta"><span>${a.url.length>30?'…'+a.url.slice(-25):a.url}</span></div></div>
+    <div class="macts">
+      <button class="pbtn" style="background:var(--ac2)" onclick="playAudioItem(${i})">▶</button>
+      <button class="dbtn" onclick="delA(${i})">🗑</button>
+    </div>
+  </div>`).join('');
+}
+function addAudio(){
+  const n=document.getElementById('aName').value.trim(),u=document.getElementById('aUrlIn').value.trim();
+  if(!n||!u)return alert('حط اسم ورابط!');
+  al.push({name:n,url:u});
+  document.getElementById('aName').value='';document.getElementById('aUrlIn').value='';
+  saveAL();renderAL();st('🎵 ✅ '+n);
+}
+function delA(i){al.splice(i,1);saveAL();renderAL();}
+function playAudioItem(i){
+  const a=al[i];
+  document.getElementById('audioUrl').value=a.url;
+  socket.emit('playAudio',{url:a.url,volume:audioVol/100,muted:audioMuted});
+  audioPlaying=true; audioPausedAt=0; audioStartedAt=Date.now();
+  startAudioTimer(); st('🎵 ▶ '+a.name);
+}
 
 // ===== تايمر =====
 function startTimer(){clearInterval(timer);timer=setInterval(()=>{if(!playing||!startedAt)return;const s=(Date.now()-startedAt)/1000;if(!dragging){updTimer(s);updSeek(s);}},200);}
@@ -415,7 +463,7 @@ function st(m){document.getElementById('statusBox').textContent=m;}
 socket.on('videoDuration',d=>{if(d.duration>0){dur=d.duration;const m=Math.floor((d.duration%3600)/60),s=Math.floor(d.duration%60);document.getElementById('seekEnd').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}});
 socket.on('state',d=>{playing=d.playing;startedAt=d.startedAt;pausedAt=d.pausedAt||0;if(!playing)updTimer(pausedAt);});
 
-renderML(); startTimer();
+renderML(); renderAL(); startTimer();
 </script>
 </body>
 </html>
