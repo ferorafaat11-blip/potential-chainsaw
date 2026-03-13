@@ -146,8 +146,17 @@ io.on('connection', (socket) => {
   // ===== VIEWER =====
   socket.on('setAllowJoin', (data) => {
     allowJoin = data.allow;
-    if (allowJoin) io.emit('sessionStart');
-    else { io.emit('sessionStop'); Object.keys(viewers).forEach(id=>{if(viewers[id])viewers[id].status='انتظار';}); broadcastViewers(); }
+    if (allowJoin) {
+      // ابعت sessionStart للـ viewers بس (مش للهوست اللي بعت الأمر)
+      socket.broadcast.emit('sessionStart');
+      Object.keys(viewers).forEach(id => { if(viewers[id]) viewers[id].status = 'اختيار وضع'; });
+    } else {
+      socket.broadcast.emit('sessionStop');
+      Object.keys(viewers).forEach(id => { if(viewers[id]) viewers[id].status = 'انتظار'; });
+    }
+    broadcastViewers();
+    // رد على الهوست بتأكيد
+    socket.emit('joinToggleOk', { allow: allowJoin });
   });
 
   socket.on('autoJoin', (data) => {
