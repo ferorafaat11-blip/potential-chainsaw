@@ -3,304 +3,475 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VR Control</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+<title>VR Command</title>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700;800&family=Noto+Kufi+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
 <style>
 :root {
-  --bg:#060a12; --s1:#0d1520; --s2:#111d2e;
-  --br:rgba(0,210,255,0.12); --ac:#00d2ff; --ac2:#7b2fff;
-  --red:#ff2d6b; --warn:#f5a623; --grn:#22c55e;
-  --tx:#e8f4ff; --mu:#3d5a7a;
+  --bg:    #080c0e;
+  --p1:    #0e1518;
+  --p2:    #131c20;
+  --p3:    #1a252a;
+  --am:    #e8a030;   /* amber primary */
+  --am2:   #f0c060;   /* amber light */
+  --am3:   rgba(232,160,48,0.12);
+  --am4:   rgba(232,160,48,0.06);
+  --teal:  #2dd4bf;
+  --red:   #ef4444;
+  --grn:   #22c55e;
+  --tx:    #d4e0e8;
+  --mu:    #4a6070;
+  --br:    rgba(232,160,48,0.15);
+  --br2:   rgba(232,160,48,0.08);
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--tx);font-family:'Tajawal',sans-serif;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;}
-body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 60% 40% at 80% 20%,rgba(0,210,255,0.06) 0%,transparent 60%),radial-gradient(ellipse 40% 60% at 10% 80%,rgba(123,47,255,0.05) 0%,transparent 60%);pointer-events:none;}
-
-/* HEADER */
-.hdr{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--br);background:rgba(6,10,18,0.95);backdrop-filter:blur(20px);flex-shrink:0;gap:10px;flex-wrap:wrap;}
-.logo{font-family:'Space Mono',monospace;font-size:0.85rem;color:var(--ac);letter-spacing:3px;}
-.hdr-stats{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-.spill{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:14px;background:var(--s2);border:1px solid var(--br);font-size:0.72rem;font-family:'Space Mono',monospace;}
-.dot{width:6px;height:6px;border-radius:50%;}
-.dot.g{background:var(--grn);box-shadow:0 0 6px var(--grn);animation:blink 2s infinite;}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.hdr-btns{display:flex;gap:6px;flex-wrap:wrap;}
-.hb{padding:5px 11px;border-radius:14px;border:none;font-size:0.73rem;font-weight:900;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .15s;}
-.hb:active{transform:scale(.95);}
-.hb.start{background:var(--grn);color:#000;}
-.hb.stop{background:var(--red);color:#fff;}
-.hb.kick{background:rgba(255,45,107,.15);color:var(--red);border:1px solid rgba(255,45,107,.3);}
-.hb.kick:hover{background:var(--red);color:#fff;}
-
-/* LAYOUT */
-.main{position:relative;z-index:5;display:grid;grid-template-columns:1fr 290px;grid-template-rows:auto auto auto 1fr auto;gap:10px;padding:10px;flex:1;}
-
-/* TIMER */
-.timer-card{grid-column:1;grid-row:1;background:var(--s1);border:1px solid var(--br);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:14px;}
-.timer{font-family:'Space Mono',monospace;font-size:2rem;font-weight:700;color:var(--ac);text-shadow:0 0 20px rgba(0,210,255,.4);letter-spacing:3px;min-width:150px;}
-.tctl{flex:1;display:flex;flex-direction:column;gap:7px;}
-.srow{display:flex;align-items:center;gap:6px;}
-.sslider{flex:1;height:4px;accent-color:var(--ac);cursor:pointer;border-radius:2px;}
-.slbl{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--mu);min-width:34px;}
-.mrow{display:flex;gap:5px;}
-.mi{flex:1;padding:5px 8px;background:var(--s2);border:1px solid var(--br);border-radius:6px;color:var(--tx);font-size:.76rem;direction:ltr;text-align:center;}
-.mi:focus{outline:none;border-color:var(--ac);}
-.mi::placeholder{color:var(--mu);}
-.mb{padding:5px 9px;border:none;border-radius:6px;font-size:.73rem;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;background:var(--ac2);color:#fff;}
-
-/* TRANSPORT + VOLUME */
-.ctrl-row{grid-column:1;grid-row:2;display:flex;flex-direction:column;gap:8px;}
-.transport{display:flex;gap:6px;flex-wrap:wrap;}
-.tb{flex:1;min-width:68px;padding:9px 5px;border:none;border-radius:9px;font-size:.8rem;font-weight:900;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .15s;}
-.tb:active{transform:scale(.95);}
-.t-pl{background:var(--ac);color:#000;} .t-pa{background:var(--red);color:#fff;}
-.t-re{background:var(--ac2);color:#fff;} .t-sy{background:var(--warn);color:#000;}
-.t-sy.flash{animation:fl .4s;}
-@keyframes fl{0%,100%{opacity:1}50%{opacity:.2}}
-
-/* VIDEO + AUDIO VOLUMES */
-.vol-audio-row{display:flex;gap:8px;}
-.vpanel{flex:1;background:var(--s1);border:1px solid var(--br);border-radius:9px;padding:9px 12px;display:flex;align-items:center;gap:8px;}
-.vlbl{font-size:.7rem;color:var(--mu);white-space:nowrap;}
-.vsl{flex:1;accent-color:var(--ac);cursor:pointer;height:4px;}
-.vval{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--ac);min-width:32px;text-align:center;}
-.muteb{padding:3px 8px;border-radius:5px;border:1px solid rgba(255,45,107,.3);background:rgba(255,45,107,.1);color:var(--red);font-size:.7rem;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;}
-.muteb.on{background:var(--red);color:#fff;}
-
-/* AUDIO CONTROLS */
-.audio-card{background:var(--s1);border:1px solid rgba(123,47,255,.3);border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:7px;}
-.audio-hdr{font-size:.68rem;color:var(--ac2);letter-spacing:2px;font-family:'Space Mono',monospace;}
-.audio-timer{font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;color:var(--ac2);text-shadow:0 0 15px rgba(123,47,255,.5);letter-spacing:2px;}
-.audio-row{display:flex;gap:5px;align-items:center;}
-.audio-url{flex:1;padding:6px 8px;background:var(--s2);border:1px solid var(--br);border-radius:6px;color:var(--tx);font-size:.75rem;direction:ltr;}
-.audio-url:focus{outline:none;border-color:var(--ac2);}
-.audio-url::placeholder{color:var(--mu);}
-.abt{padding:5px 10px;border:none;border-radius:6px;font-size:.73rem;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;transition:all .15s;}
-.abt:active{transform:scale(.95);}
-.ab-pl{background:var(--ac2);color:#fff;} .ab-pa{background:var(--mu);color:#fff;} .ab-re{background:#3d2080;color:#fff;} .ab-sy{background:var(--warn);color:#000;} .ab-st{background:rgba(255,45,107,.2);color:var(--red);}
-.asl{flex:1;height:4px;accent-color:var(--ac2);cursor:pointer;border-radius:2px;}
-.aslbl{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--mu);min-width:30px;}
-.amuteb{padding:3px 7px;border-radius:5px;border:1px solid rgba(123,47,255,.4);background:rgba(123,47,255,.1);color:var(--ac2);font-size:.7rem;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;}
-.amuteb.on{background:var(--ac2);color:#fff;}
-
-/* MEDIA LIST */
-.media-card{grid-column:1;grid-row:4;background:var(--s1);border:1px solid var(--br);border-radius:9px;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
-.card-hdr{padding:8px 12px;border-bottom:1px solid var(--br);font-size:.66rem;letter-spacing:2px;color:var(--mu);font-family:'Space Mono',monospace;flex-shrink:0;}
-.mscroll{flex:1;overflow-y:auto;padding:6px;}
-.mscroll::-webkit-scrollbar{width:3px;} .mscroll::-webkit-scrollbar-thumb{background:var(--br);}
-.mitem{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:7px;border:1px solid transparent;margin-bottom:3px;transition:all .15s;cursor:pointer;}
-.mitem:hover{background:var(--s2);border-color:var(--br);}
-.mitem.active{background:rgba(0,210,255,.07);border-color:rgba(0,210,255,.3);}
-.mic{font-size:.95rem;flex-shrink:0;}
-.min{flex:1;min-width:0;}
-.mname{font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mmeta{font-size:.6rem;color:var(--mu);margin-top:1px;display:flex;gap:5px;}
-.macts{display:flex;gap:3px;}
-.pbtn{padding:3px 8px;background:var(--ac);color:#000;border:none;border-radius:5px;font-size:.68rem;font-weight:700;cursor:pointer;}
-.dbtn{padding:3px 6px;background:rgba(255,45,107,.1);color:var(--red);border:1px solid rgba(255,45,107,.2);border-radius:5px;font-size:.68rem;cursor:pointer;}
-.empty{color:var(--mu);font-size:.78rem;text-align:center;padding:20px;}
-
-/* STATUS BAR */
-.sbar{grid-column:1;grid-row:5;background:var(--s1);border:1px solid var(--br);border-radius:7px;padding:6px 12px;font-size:.7rem;color:var(--mu);font-family:'Space Mono',monospace;display:flex;align-items:center;gap:6px;}
-
-/* RIGHT COL */
-.rcol{grid-column:2;grid-row:1/6;display:flex;flex-direction:column;gap:8px;min-height:0;}
-
-/* VIEWERS */
-.viewers-card{background:var(--s1);border:1px solid var(--br);border-radius:10px;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;}
-.vscroll{flex:1;overflow-y:auto;padding:4px;}
-.vscroll::-webkit-scrollbar{width:3px;} .vscroll::-webkit-scrollbar-thumb{background:var(--br);}
-.vitem{display:flex;align-items:center;gap:7px;padding:6px 10px;border-bottom:1px solid rgba(0,210,255,.04);}
-.vnum{width:20px;height:20px;border-radius:50%;background:var(--s2);border:1px solid var(--br);display:flex;align-items:center;justify-content:center;font-size:.6rem;font-family:'Space Mono',monospace;color:var(--mu);flex-shrink:0;}
-.sbadge{padding:2px 7px;border-radius:9px;font-size:.62rem;font-weight:700;}
-.sw{background:rgba(61,90,122,.3);color:var(--mu);}
-.sc{background:rgba(245,166,35,.2);color:var(--warn);}
-.sn{background:rgba(34,197,94,.2);color:var(--grn);}
-.sv{background:rgba(0,210,255,.15);color:var(--ac);}
-
-/* ADD PANEL */
-.add-card{background:var(--s1);border:1px solid var(--br);border-radius:10px;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
-.aform{overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:7px;max-height:340px;}
-.aform::-webkit-scrollbar{width:3px;} .aform::-webkit-scrollbar-thumb{background:var(--br);}
-.fl{font-size:.63rem;color:var(--mu);letter-spacing:1px;margin-bottom:3px;font-family:'Space Mono',monospace;}
-.fi{width:100%;padding:6px 8px;background:var(--s2);border:1px solid var(--br);border-radius:6px;color:var(--tx);font-size:.78rem;direction:ltr;}
-.fi.r{direction:rtl;}
-.fi:focus{outline:none;border-color:var(--ac);}
-.fi::placeholder{color:var(--mu);}
-.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
-.tyb{padding:5px 3px;border-radius:6px;border:1px solid var(--br);background:transparent;color:var(--mu);font-size:.68rem;cursor:pointer;text-align:center;font-family:'Tajawal',sans-serif;}
-.tyb.sel{border-color:var(--ac);color:var(--ac);background:rgba(0,210,255,.08);}
-.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:4px;}
-.dbt{padding:4px;border-radius:5px;border:1px solid var(--br);background:transparent;color:var(--mu);font-size:.63rem;cursor:pointer;font-family:'Tajawal',sans-serif;}
-.dbt:hover{border-color:var(--ac);color:var(--ac);}
-.drow{display:flex;align-items:center;gap:5px;}
-.dsl{flex:1;accent-color:var(--ac);}
-.dv{font-family:'Space Mono',monospace;font-size:.66rem;color:var(--ac);min-width:26px;}
-.asub{width:100%;padding:8px;background:linear-gradient(135deg,var(--ac2),#5a1fd1);color:#fff;border:none;border-radius:7px;font-size:.82rem;font-weight:900;cursor:pointer;font-family:'Tajawal',sans-serif;}
-
-/* RESPONSIVE MOBILE */
-@media(max-width:700px){
-  .main{grid-template-columns:1fr;grid-template-rows:auto auto auto auto auto auto;}
-  .timer-card{grid-column:1;grid-row:1;}
-  .ctrl-row{grid-column:1;grid-row:2;}
-  .media-card{grid-column:1;grid-row:4;min-height:180px;}
-  .sbar{grid-column:1;grid-row:5;}
-  .rcol{grid-column:1;grid-row:6;flex-direction:row;flex-wrap:wrap;min-height:unset;}
-  .viewers-card{flex:1;min-width:200px;min-height:150px;}
-  .add-card{flex:1;min-width:200px;}
-  .timer{font-size:1.4rem;min-width:110px;}
-  .hdr{justify-content:center;}
-  .hdr-btns{justify-content:center;}
+html,body{height:100%;}
+body{
+  background:var(--bg);
+  color:var(--tx);
+  font-family:'Noto Kufi Arabic',sans-serif;
+  display:flex; flex-direction:column;
+  overflow:hidden; min-height:100vh;
 }
+
+/* scan-line texture */
+body::before{
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+}
+body::after{
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 10%, rgba(232,160,48,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 70% at 85% 90%, rgba(45,212,191,0.03) 0%, transparent 60%);
+}
+
+/* ───── HEADER ───── */
+.hdr{
+  position:relative; z-index:20;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 20px; gap:12px; flex-wrap:wrap;
+  border-bottom:1px solid var(--br);
+  background:linear-gradient(180deg, rgba(14,21,24,0.98) 0%, rgba(8,12,14,0.95) 100%);
+  backdrop-filter:blur(20px);
+  flex-shrink:0;
+}
+.hdr::after{content:''; position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--am),transparent);}
+
+.logo{
+  font-family:'Oxanium',monospace; font-size:1rem; font-weight:800;
+  color:var(--am); letter-spacing:4px; text-transform:uppercase;
+  display:flex; align-items:center; gap:8px;
+}
+.logo-icon{font-size:1.3rem;}
+.logo-sub{font-size:.6rem; color:var(--mu); letter-spacing:6px; display:block; margin-top:-2px;}
+
+.hdr-center{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+
+.stat-chip{
+  display:flex; align-items:center; gap:5px;
+  padding:4px 10px; border-radius:3px;
+  background:var(--p2); border:1px solid var(--br);
+  font-family:'Oxanium',monospace; font-size:.72rem; color:var(--mu);
+  position:relative; overflow:hidden;
+}
+.stat-chip::before{content:''; position:absolute; top:0; left:0; width:2px; height:100%; background:var(--am);}
+.stat-val{color:var(--am2); font-weight:700;}
+
+.pulse-dot{width:7px; height:7px; border-radius:50%; background:var(--grn); box-shadow:0 0 8px var(--grn); animation:pdot 1.8s infinite;}
+@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+.hdr-btns{display:flex; gap:6px; flex-wrap:wrap;}
+
+.cmd-btn{
+  padding:6px 14px; border-radius:3px; border:1px solid;
+  font-family:'Oxanium',monospace; font-size:.72rem; font-weight:700;
+  cursor:pointer; letter-spacing:1px; text-transform:uppercase;
+  transition:all .15s; position:relative; overflow:hidden;
+}
+.cmd-btn::after{content:''; position:absolute; inset:0; background:currentColor; opacity:0; transition:opacity .15s;}
+.cmd-btn:hover::after{opacity:.08;}
+.cmd-btn:active{transform:scale(.96);}
+.cb-join{border-color:var(--mu); background:transparent; color:var(--mu);}
+.cb-join.on{border-color:var(--grn); background:rgba(34,197,94,.12); color:var(--grn);}
+.cb-kick{border-color:rgba(239,68,68,.4); background:rgba(239,68,68,.08); color:var(--red);}
+
+/* ───── LAYOUT ───── */
+.main{
+  position:relative; z-index:5;
+  display:grid;
+  grid-template-columns:1fr 1fr 280px;
+  grid-template-rows:auto auto 1fr 1fr auto;
+  gap:8px; padding:8px;
+  flex:1; overflow:hidden; min-height:0;
+}
+
+/* ───── PANEL BASE ───── */
+.panel{
+  background:var(--p1);
+  border:1px solid var(--br2);
+  border-radius:4px;
+  display:flex; flex-direction:column;
+  overflow:hidden; position:relative;
+}
+.panel::before{content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg, var(--am) 0%, transparent 100%); opacity:.6;}
+.panel-hdr{
+  padding:7px 12px; border-bottom:1px solid var(--br2);
+  font-family:'Oxanium',monospace; font-size:.62rem;
+  letter-spacing:3px; color:var(--am); text-transform:uppercase;
+  display:flex; align-items:center; justify-content:space-between;
+  flex-shrink:0;
+}
+.panel-hdr-icon{opacity:.5; font-size:.8rem;}
+
+/* ───── TIMER ───── */
+.timer-panel{grid-column:1; grid-row:1;}
+.timer-inner{padding:10px 14px; display:flex; align-items:center; gap:14px;}
+.timer-display{
+  font-family:'Oxanium',monospace; font-size:2rem; font-weight:800;
+  color:var(--am2); text-shadow:0 0 30px rgba(232,160,48,.5);
+  letter-spacing:4px; min-width:145px;
+}
+.seek-col{flex:1; display:flex; flex-direction:column; gap:6px;}
+.seek-row{display:flex; align-items:center; gap:6px;}
+.seek-lbl{font-family:'Oxanium',monospace; font-size:.58rem; color:var(--mu); min-width:32px;}
+.seek-sl{flex:1; height:3px; cursor:pointer; border-radius:2px; accent-color:var(--am);}
+.manual-row{display:flex; gap:5px;}
+.tac-input{
+  flex:1; padding:5px 8px;
+  background:var(--p3); border:1px solid var(--br);
+  border-radius:3px; color:var(--tx); font-size:.75rem;
+  direction:ltr; text-align:center; font-family:'Oxanium',monospace;
+}
+.tac-input:focus{outline:none; border-color:var(--am);}
+.tac-input::placeholder{color:var(--mu);}
+.tac-input.rtl{direction:rtl; font-family:'Noto Kufi Arabic',sans-serif;}
+.tac-btn{
+  padding:5px 10px; background:var(--am3); border:1px solid var(--br);
+  border-radius:3px; color:var(--am2); font-size:.72rem; font-weight:700;
+  cursor:pointer; font-family:'Oxanium',monospace; transition:all .15s;
+}
+.tac-btn:hover{background:rgba(232,160,48,.2);}
+.tac-btn:active{transform:scale(.95);}
+.tac-btn.danger{background:rgba(239,68,68,.1); border-color:rgba(239,68,68,.3); color:var(--red);}
+.tac-btn.purple{background:rgba(139,92,246,.15); border-color:rgba(139,92,246,.3); color:#a78bfa;}
+.tac-btn.teal{background:rgba(45,212,191,.1); border-color:rgba(45,212,191,.3); color:var(--teal);}
+
+/* ───── TRANSPORT ───── */
+.transport-panel{grid-column:2; grid-row:1;}
+.transport-inner{padding:10px 12px; display:flex; flex-direction:column; gap:8px;}
+.t-row{display:flex; gap:6px;}
+.t-btn{
+  flex:1; padding:9px 5px; border-radius:3px; border:1px solid;
+  font-family:'Noto Kufi Arabic',sans-serif; font-size:.82rem; font-weight:700;
+  cursor:pointer; transition:all .15s; text-align:center;
+}
+.t-btn:active{transform:scale(.95);}
+.t-play{background:rgba(232,160,48,.15); border-color:var(--am); color:var(--am2);}
+.t-play:hover{background:rgba(232,160,48,.25);}
+.t-pause{background:rgba(239,68,68,.1); border-color:rgba(239,68,68,.4); color:var(--red);}
+.t-pause:hover{background:rgba(239,68,68,.2);}
+.t-restart{background:rgba(45,212,191,.08); border-color:rgba(45,212,191,.3); color:var(--teal);}
+.t-restart:hover{background:rgba(45,212,191,.15);}
+.t-sync{background:rgba(139,92,246,.1); border-color:rgba(139,92,246,.35); color:#a78bfa;}
+.t-sync:hover{background:rgba(139,92,246,.2);}
+.t-sync.flash{animation:syncfl .4s;}
+@keyframes syncfl{0%,100%{opacity:1}50%{opacity:.15}}
+
+.vol-row{display:flex; align-items:center; gap:8px; padding:4px 0;}
+.vol-lbl{font-size:.65rem; color:var(--mu); font-family:'Oxanium',monospace; letter-spacing:1px; min-width:26px;}
+.vol-sl{flex:1; accent-color:var(--am); cursor:pointer; height:3px;}
+.vol-val{font-family:'Oxanium',monospace; font-size:.65rem; color:var(--am2); min-width:32px; text-align:center;}
+.mute-tb{padding:3px 8px; border-radius:3px; border:1px solid rgba(239,68,68,.3); background:rgba(239,68,68,.08); color:var(--red); font-size:.65rem; font-weight:700; cursor:pointer; font-family:'Oxanium',monospace;}
+.mute-tb.on{background:var(--red); color:#fff;}
+
+/* ───── AUDIO PANEL ───── */
+.audio-panel{grid-column:1/3; grid-row:2;}
+.audio-inner{padding:10px 14px; display:flex; flex-direction:column; gap:7px;}
+.audio-top{display:flex; align-items:center; gap:14px;}
+.audio-timer{font-family:'Oxanium',monospace; font-size:1.1rem; font-weight:700; color:#a78bfa; letter-spacing:3px; text-shadow:0 0 15px rgba(139,92,246,.4);}
+.audio-url-row{display:flex; gap:5px;}
+.a-row{display:flex; gap:5px; align-items:center;}
+.a-btn{
+  padding:5px 9px; border-radius:3px; border:1px solid;
+  font-family:'Oxanium',monospace; font-size:.7rem; font-weight:700;
+  cursor:pointer; transition:all .15s;
+}
+.a-btn:active{transform:scale(.95);}
+.a-pl{background:rgba(139,92,246,.15); border-color:rgba(139,92,246,.4); color:#a78bfa;}
+.a-pa{background:var(--p3); border-color:var(--br); color:var(--mu);}
+.a-re{background:rgba(45,212,191,.08); border-color:rgba(45,212,191,.3); color:var(--teal);}
+.a-sy{background:rgba(232,160,48,.1); border-color:var(--br); color:var(--am);}
+.a-st{background:rgba(239,68,68,.08); border-color:rgba(239,68,68,.3); color:var(--red);}
+.amute{padding:3px 8px; border-radius:3px; border:1px solid rgba(139,92,246,.3); background:rgba(139,92,246,.08); color:#a78bfa; font-size:.65rem; font-weight:700; cursor:pointer; font-family:'Oxanium',monospace;}
+.amute.on{background:#7c3aed; color:#fff;}
+
+/* ───── LISTS ───── */
+.scroll-area{flex:1; overflow-y:auto; padding:4px;}
+.scroll-area::-webkit-scrollbar{width:2px;}
+.scroll-area::-webkit-scrollbar-thumb{background:var(--br); border-radius:2px;}
+
+.list-item{
+  display:flex; align-items:center; gap:7px;
+  padding:7px 10px; border-radius:3px; border:1px solid transparent;
+  margin-bottom:2px; transition:all .15s; cursor:pointer;
+}
+.list-item:hover{background:var(--p2); border-color:var(--br2);}
+.list-item.active{background:rgba(232,160,48,.06); border-color:var(--br);}
+.li-icon{font-size:.9rem; flex-shrink:0; opacity:.7;}
+.li-info{flex:1; min-width:0;}
+.li-name{font-size:.78rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--tx);}
+.li-meta{font-size:.58rem; color:var(--mu); margin-top:1px; display:flex; gap:6px; font-family:'Oxanium',monospace;}
+.li-acts{display:flex; gap:3px; flex-shrink:0;}
+.li-play{padding:3px 8px; background:var(--am3); border:1px solid var(--br); border-radius:3px; color:var(--am2); font-size:.65rem; font-weight:700; cursor:pointer; font-family:'Oxanium',monospace;}
+.li-edit{padding:3px 7px; background:rgba(139,92,246,.12); border:1px solid rgba(139,92,246,.3); border-radius:3px; color:#a78bfa; font-size:.65rem; cursor:pointer;}
+.li-del{padding:3px 7px; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.2); border-radius:3px; color:var(--red); font-size:.65rem; cursor:pointer;}
+.li-empty{color:var(--mu); font-size:.75rem; text-align:center; padding:18px; font-family:'Oxanium',monospace; letter-spacing:1px;}
+
+.list-footer{padding:7px 10px; border-top:1px solid var(--br2); display:flex; gap:5px; flex-shrink:0;}
+
+/* media list */
+.media-panel{grid-column:1; grid-row:3/5;}
+/* audio list */
+.audio-list-panel{grid-column:2; grid-row:3/5;}
+
+/* ───── ADD PANEL ───── */
+.add-panel{grid-column:1/3; grid-row:5;}
+.add-inner{padding:10px 14px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;}
+.add-group{display:flex; flex-direction:column; gap:4px;}
+.add-lbl{font-family:'Oxanium',monospace; font-size:.58rem; letter-spacing:2px; color:var(--mu); text-transform:uppercase;}
+.type-row{display:flex; gap:3px;}
+.ty-btn{padding:5px 8px; border-radius:3px; border:1px solid var(--br2); background:transparent; color:var(--mu); font-size:.65rem; cursor:pointer; font-family:'Noto Kufi Arabic',sans-serif; transition:all .12s;}
+.ty-btn.sel{border-color:var(--am); color:var(--am2); background:var(--am3);}
+.dir-compact{display:flex; gap:3px; align-items:center;}
+.dir-btn{padding:4px 6px; border-radius:3px; border:1px solid var(--br2); background:transparent; color:var(--mu); font-size:.6rem; cursor:pointer; transition:all .12s;}
+.dir-btn:hover{border-color:var(--am); color:var(--am);}
+.add-input{
+  padding:6px 9px; background:var(--p3); border:1px solid var(--br);
+  border-radius:3px; color:var(--tx); font-size:.78rem;
+  font-family:'Noto Kufi Arabic',sans-serif; direction:rtl;
+}
+.add-input.ltr{direction:ltr; font-family:'Oxanium',monospace; font-size:.72rem;}
+.add-input:focus{outline:none; border-color:var(--am);}
+.add-input::placeholder{color:var(--mu);}
+.add-submit{
+  padding:7px 16px; background:var(--am3); border:1px solid var(--am);
+  border-radius:3px; color:var(--am2); font-size:.78rem; font-weight:700;
+  cursor:pointer; font-family:'Oxanium',monospace; letter-spacing:1px;
+  transition:all .15s; white-space:nowrap;
+}
+.add-submit:hover{background:rgba(232,160,48,.22);}
+.deg-val{font-family:'Oxanium',monospace; font-size:.65rem; color:var(--am2); min-width:28px;}
+
+/* ───── VIEWERS ───── */
+.viewers-panel{grid-column:3; grid-row:1/5;}
+.v-item{display:flex; align-items:center; gap:7px; padding:6px 10px; border-bottom:1px solid var(--br2);}
+.v-num{
+  width:22px; height:22px; border-radius:2px;
+  background:var(--p3); border:1px solid var(--br);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Oxanium',monospace; font-size:.6rem; color:var(--mu); flex-shrink:0;
+}
+.v-info{flex:1; min-width:0;}
+.v-name{font-size:.72rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--tx);}
+.v-badge{
+  display:inline-block; padding:1px 6px; border-radius:2px;
+  font-family:'Oxanium',monospace; font-size:.56rem; font-weight:700; letter-spacing:1px;
+  margin-top:1px;
+}
+.vb-w{background:rgba(74,96,112,.2); color:var(--mu); border:1px solid rgba(74,96,112,.3);}
+.vb-c{background:rgba(245,158,11,.12); color:#fbbf24; border:1px solid rgba(245,158,11,.3);}
+.vb-n{background:rgba(34,197,94,.12); color:var(--grn); border:1px solid rgba(34,197,94,.3);}
+.vb-v{background:rgba(45,212,191,.1); color:var(--teal); border:1px solid rgba(45,212,191,.3);}
+.v-kick{
+  padding:2px 6px; border-radius:2px;
+  border:1px solid rgba(239,68,68,.25); background:rgba(239,68,68,.07);
+  color:var(--red); font-size:.6rem; cursor:pointer;
+  font-family:'Oxanium',monospace; flex-shrink:0;
+}
+
+/* ───── STATUS ───── */
+.status-bar{
+  grid-column:3; grid-row:5;
+  background:var(--p1); border:1px solid var(--br2); border-radius:3px;
+  padding:6px 10px; display:flex; align-items:center; gap:6px;
+  font-family:'Oxanium',monospace; font-size:.62rem; color:var(--mu); letter-spacing:.5px;
+}
+
+/* ───── MOBILE ───── */
+@media(max-width:768px){
+  .main{grid-template-columns:1fr; grid-template-rows:auto auto auto auto auto auto auto auto;}
+  .timer-panel{grid-column:1; grid-row:1;}
+  .transport-panel{grid-column:1; grid-row:2;}
+  .audio-panel{grid-column:1; grid-row:3;}
+  .media-panel{grid-column:1; grid-row:4; min-height:160px;}
+  .audio-list-panel{grid-column:1; grid-row:5; min-height:140px;}
+  .add-panel{grid-column:1; grid-row:6;}
+  .viewers-panel{grid-column:1; grid-row:7; min-height:150px;}
+  .status-bar{grid-column:1; grid-row:8;}
+  .timer-display{font-size:1.5rem; min-width:115px;}
+  body{overflow-y:auto;}
+}
+
+/* edit form inline */
+.edit-form{flex-direction:column;align-items:stretch;gap:6px;border-color:var(--am) !important;background:var(--p2);}
+.edit-form .tac-input{width:100%;}
 </style>
 </head>
 <body>
 
+<!-- HEADER -->
 <div class="hdr">
-  <span class="logo">🥽 VR</span>
-  <div class="hdr-stats">
-    <div class="spill"><div class="dot g"></div><span id="vCount">0</span> جهاز</div>
-    <div class="spill" id="statusPill">متوقف</div>
+  <div class="logo">
+    <span class="logo-icon">◈</span>
+    <div>مركز التحكم VR
+      <span class="logo-sub">CONTROL CENTER</span>
+    </div>
+  </div>
+  <div class="hdr-center">
+    <div class="stat-chip"><div class="pulse-dot"></div>DEVICES&nbsp;<span class="stat-val" id="vCount">0</span></div>
+    <div class="stat-chip">STATUS&nbsp;<span class="stat-val" id="statusPill">IDLE</span></div>
   </div>
   <div class="hdr-btns">
-    <button class="hb start" onclick="startSession()">▶ ابدأ</button>
-    <button class="hb stop"  onclick="stopSession()">⏹ وقّف</button>
-    <button class="hb kick"  onclick="kickAll()">🚪 أخرج الكل</button>
+    <button class="cmd-btn cb-join" id="joinToggle" onclick="toggleJoin()">⛔ OFF</button>
+    <button class="cmd-btn cb-kick" onclick="kickAll()">▣ KICK ALL</button>
   </div>
 </div>
 
 <div class="main">
 
   <!-- TIMER -->
-  <div class="timer-card">
-    <div class="timer" id="timerDisp">00:00:00</div>
-    <div class="tctl">
-      <div class="srow">
-        <span class="slbl">00:00</span>
-        <input type="range" class="sslider" id="seekSl" min="0" max="100" value="0"
-          oninput="seekMove(this.value)" onchange="seekDrop(this.value)">
-        <span class="slbl" id="seekEnd">00:00</span>
-      </div>
-      <div class="mrow">
-        <input class="mi" id="seekIn" placeholder="1:30 أو 90" />
-        <button class="mb" onclick="seekManual()">⏩</button>
+  <div class="panel timer-panel">
+    <div class="panel-hdr">⏱ VIDEO TIMER <span class="panel-hdr-icon">◈</span></div>
+    <div class="timer-inner">
+      <div class="timer-display" id="timerDisp">00:00:00</div>
+      <div class="seek-col">
+        <div class="seek-row">
+          <span class="seek-lbl">00:00</span>
+          <input type="range" class="seek-sl" id="seekSl" min="0" max="100" value="0"
+            oninput="seekMove(this.value)" onchange="seekDrop(this.value)">
+          <span class="seek-lbl" id="seekEnd">00:00</span>
+        </div>
+        <div class="manual-row">
+          <input class="tac-input" id="seekIn" placeholder="1:30 أو 90" />
+          <button class="tac-btn" onclick="seekManual()">JUMP</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- CONTROLS -->
-  <div class="ctrl-row">
-    <div class="transport">
-      <button class="tb t-pl" onclick="sendPlay()">▶ شغّل</button>
-      <button class="tb t-pa" onclick="sendPause()">⏸ وقّف</button>
-      <button class="tb t-re" onclick="sendRestart()">🔄 أول</button>
-      <button class="tb t-sy" id="syncBtn" onclick="sendSync()">⚡ Sync</button>
-    </div>
-
-    <!-- VIDEO VOLUME + AUDIO VOLUME -->
-    <div class="vol-audio-row">
-      <div class="vpanel">
-        <span class="vlbl">🎬</span>
-        <input type="range" class="vsl" id="volSl" min="0" max="100" value="100" oninput="setVolume(this.value)">
-        <span class="vval" id="volVal">100%</span>
-        <button class="muteb" id="muteBtn" onclick="toggleMute()">🔇</button>
+  <!-- TRANSPORT -->
+  <div class="panel transport-panel">
+    <div class="panel-hdr">◈ TRANSPORT <span class="panel-hdr-icon">▶</span></div>
+    <div class="transport-inner">
+      <div class="t-row">
+        <button class="t-btn t-play"    onclick="sendPlay()">▶ شغّل</button>
+        <button class="t-btn t-pause"   onclick="sendPause()">⏸ وقّف</button>
+        <button class="t-btn t-restart" onclick="sendRestart()">⏮ أول</button>
+        <button class="t-btn t-sync" id="syncBtn" onclick="sendSync()">⚡ Sync</button>
+      </div>
+      <div class="vol-row">
+        <span class="vol-lbl">🎬 VOL</span>
+        <input type="range" class="vol-sl" id="volSl" min="0" max="100" value="100" oninput="setVolume(this.value)">
+        <span class="vol-val" id="volVal">100%</span>
+        <button class="mute-tb" id="muteBtn" onclick="toggleMute()">MUTE</button>
       </div>
     </div>
+  </div>
 
-    <!-- AUDIO CARD -->
-    <div class="audio-card">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div class="audio-hdr">🎵 صوت منفصل</div>
+  <!-- AUDIO -->
+  <div class="panel audio-panel">
+    <div class="panel-hdr">🎵 AUDIO TRACK <span class="panel-hdr-icon">◈</span></div>
+    <div class="audio-inner">
+      <div class="audio-top">
         <div class="audio-timer" id="audioTimerDisp">00:00:00</div>
+        <div class="seek-row" style="flex:1;">
+          <span class="seek-lbl" style="font-size:.55rem;">00:00</span>
+          <input type="range" class="seek-sl" id="audioSeekSl" min="0" max="100" value="0"
+            oninput="audioSeekMove(this.value)" onchange="audioSeekDrop(this.value)">
+          <span class="seek-lbl" id="audioSeekEnd" style="font-size:.55rem;">00:00</span>
+        </div>
       </div>
-      <!-- رابط -->
-      <div class="audio-row">
-        <input class="audio-url" id="audioUrl" placeholder="رابط الصوت mp3..." />
+      <div class="audio-url-row">
+        <input class="tac-input ltr" id="audioUrl" placeholder="audio url / mp3..." style="flex:1;"/>
       </div>
-      <!-- seek -->
-      <div class="audio-row">
-        <span class="aslbl">00:00</span>
-        <input type="range" class="asl" id="audioSeekSl" min="0" max="100" value="0"
-          oninput="audioSeekMove(this.value)" onchange="audioSeekDrop(this.value)">
-        <span class="aslbl" id="audioSeekEnd">00:00</span>
-      </div>
-      <!-- أزرار -->
-      <div class="audio-row">
-        <button class="abt ab-pl" onclick="playAudio()">▶</button>
-        <button class="abt ab-pa" onclick="pauseAudio()">⏸</button>
-        <button class="abt ab-re" onclick="restartAudio()">🔄</button>
-        <button class="abt ab-sy" onclick="syncAudio()">⚡</button>
-        <button class="abt ab-st" onclick="stopAudio()">⏹</button>
-      </div>
-      <!-- صوت -->
-      <div class="audio-row">
-        <span class="aslbl">🔊</span>
-        <input type="range" class="asl" id="audioVolSl" min="0" max="100" value="100" oninput="setAudioVol(this.value)">
-        <span class="vval" id="audioVolVal">100%</span>
-        <button class="amuteb" id="audioMuteBtn" onclick="toggleAudioMute()">🔇</button>
+      <div class="a-row">
+        <button class="a-btn a-pl" onclick="playAudio()">▶ شغّل</button>
+        <button class="a-btn a-pa" onclick="pauseAudio()">⏸ وقّف</button>
+        <button class="a-btn a-re" onclick="restartAudio()">🔄 أول</button>
+        <button class="a-btn a-sy" onclick="syncAudio()">⚡</button>
+        <button class="a-btn a-st" onclick="stopAudio()">⏹ قف</button>
+        <div style="flex:1;"></div>
+        <input type="range" class="vol-sl" id="audioVolSl" min="0" max="100" value="100" oninput="setAudioVol(this.value)" style="max-width:90px;">
+        <span class="vol-val" id="audioVolVal">100%</span>
+        <button class="amute" id="audioMuteBtn" onclick="toggleAudioMute()">MUTE</button>
       </div>
     </div>
   </div>
 
-    <!-- AUDIO LIST -->
-    <div class="media-card" style="grid-column:1;grid-row:3;min-height:120px;">
-      <div class="card-hdr" style="display:flex;justify-content:space-between;align-items:center;">
-        <span>🎵 قائمة الأصوات</span>
-      </div>
-      <div class="mscroll" id="audioList"></div>
-      <div style="padding:8px;border-top:1px solid var(--br);display:flex;gap:5px;flex-shrink:0;">
-        <input class="mi" id="aName" placeholder="الاسم" style="flex:1;direction:rtl;" />
-        <input class="mi" id="aUrlIn" placeholder="رابط mp3..." style="flex:2;" />
-        <button class="mb" onclick="addAudio()">➕</button>
-      </div>
-    </div>
+  <!-- MEDIA LIST -->
+  <div class="panel media-panel">
+    <div class="panel-hdr">📁 MEDIA LIST <span class="panel-hdr-icon">◈</span></div>
+    <div class="scroll-area" id="mediaList"></div>
+  </div>
 
-  <!-- MEDIA -->
-  <div class="media-card">
-    <div class="card-hdr">📁 المحتوى</div>
-    <div class="mscroll" id="mediaList"></div>
+  <!-- AUDIO LIST -->
+  <div class="panel audio-list-panel">
+    <div class="panel-hdr">🎵 AUDIO LIST <span class="panel-hdr-icon">◈</span></div>
+    <div class="scroll-area" id="audioList"></div>
+    <div class="list-footer">
+      <input class="tac-input rtl" id="aName" placeholder="الاسم" style="flex:1;"/>
+      <input class="tac-input ltr" id="aUrlIn" placeholder="mp3 url..." style="flex:2;"/>
+      <button class="tac-btn teal" onclick="addAudio()">+ ADD</button>
+    </div>
+  </div>
+
+  <!-- ADD PANEL -->
+  <div class="panel add-panel">
+    <div class="panel-hdr">+ ADD CONTENT <span class="panel-hdr-icon">◈</span></div>
+    <div class="add-inner">
+      <div class="add-group">
+        <span class="add-lbl">Type</span>
+        <div class="type-row">
+          <button class="ty-btn sel" id="t_video"     onclick="selType('video')">🌐 360°</button>
+          <button class="ty-btn"     id="t_videoFlat" onclick="selType('videoFlat')">🎬 عادي</button>
+          <button class="ty-btn"     id="t_image"     onclick="selType('image')">🖼️ صورة</button>
+          <button class="ty-btn"     id="t_image360"  onclick="selType('image360')">🌐 ص360</button>
+        </div>
+      </div>
+      <div class="add-group">
+        <span class="add-lbl">Name</span>
+        <input class="add-input" id="mName" placeholder="اسم المحتوى" style="width:130px;"/>
+      </div>
+      <div class="add-group" style="flex:1;">
+        <span class="add-lbl">URL</span>
+        <input class="add-input ltr" id="mUrl" placeholder="https://..." style="width:100%;min-width:160px;"/>
+      </div>
+      <div class="add-group">
+        <span class="add-lbl">Direction — <span id="degVal" style="color:var(--am2)">0°</span></span>
+        <div class="dir-compact">
+          <button class="dir-btn" onclick="setDeg(0)">N</button>
+          <button class="dir-btn" onclick="setDeg(90)">E</button>
+          <button class="dir-btn" onclick="setDeg(180)">S</button>
+          <button class="dir-btn" onclick="setDeg(270)">W</button>
+          <input type="range" style="width:70px;accent-color:var(--am);margin:0 4px;" min="0" max="359" value="0" id="degSl" oninput="setDeg(+this.value)">
+          <span class="deg-val" id="degSv">0°</span>
+        </div>
+      </div>
+      <button class="add-submit" onclick="addMedia()">+ ADD</button>
+    </div>
+  </div>
+
+  <!-- VIEWERS -->
+  <div class="panel viewers-panel">
+    <div class="panel-hdr">◉ DEVICES <span class="panel-hdr-icon">◈</span></div>
+    <div class="scroll-area" id="viewerList"></div>
   </div>
 
   <!-- STATUS -->
-  <div class="sbar"><div class="dot" style="background:var(--ac)"></div><span id="statusBox">متصل ✓</span></div>
-
-  <!-- RIGHT -->
-  <div class="rcol">
-    <div class="viewers-card">
-      <div class="card-hdr">👥 الأجهزة</div>
-      <div class="vscroll" id="viewerList"></div>
-    </div>
-    <div class="add-card">
-      <div class="card-hdr">➕ إضافة</div>
-      <div class="aform">
-        <div>
-          <div class="fl">النوع</div>
-          <div class="tgrid">
-            <button class="tyb sel" id="t_video"     onclick="selType('video')">🌐 360°</button>
-            <button class="tyb"     id="t_videoFlat" onclick="selType('videoFlat')">🎬 عادي</button>
-            <button class="tyb"     id="t_image"     onclick="selType('image')">🖼️ صورة</button>
-            <button class="tyb"     id="t_image360"  onclick="selType('image360')">🌐 ص360</button>
-          </div>
-        </div>
-        <div><div class="fl">الاسم</div><input class="fi r" id="mName" placeholder="اسم المحتوى"/></div>
-        <div><div class="fl">الرابط</div><input class="fi" id="mUrl" placeholder="https://..."/></div>
-        <div>
-          <div class="fl">🧭 الاتجاه — <span id="degVal" style="color:var(--ac)">0°</span></div>
-          <div class="dgrid">
-            <button class="dbt" onclick="setDeg(0)">⬆️ شمال</button>
-            <button class="dbt" onclick="setDeg(90)">➡️ شرق</button>
-            <button class="dbt" onclick="setDeg(180)">⬇️ جنوب</button>
-            <button class="dbt" onclick="setDeg(270)">⬅️ غرب</button>
-          </div>
-          <div class="drow">
-            <input type="range" class="dsl" id="degSl" min="0" max="359" value="0" oninput="setDeg(+this.value)">
-            <span class="dv" id="degSv">0°</span>
-          </div>
-        </div>
-        <button class="asub" onclick="addMedia()">➕ إضافة</button>
-      </div>
-    </div>
+  <div class="status-bar">
+    <div class="pulse-dot" style="width:5px;height:5px;"></div>
+    <span id="statusBox">CONNECTED ✓</span>
   </div>
 
 </div>
@@ -321,138 +492,158 @@ let ml=[];try{const s=localStorage.getItem('vr_ml');ml=s?JSON.parse(s):DEFAULT_M
 // ===== صوت الفيديو =====
 function setVolume(v){vol=+v;document.getElementById('volVal').textContent=v+'%';if(v>0)muted=false;updMute();socket.emit('setVolume',{volume:v/100,muted});}
 function toggleMute(){muted=!muted;updMute();socket.emit('setVolume',{volume:vol/100,muted});}
-function updMute(){const b=document.getElementById('muteBtn');b.textContent=muted?'🔊':'🔇';b.classList.toggle('on',muted);}
+function updMute(){const b=document.getElementById('muteBtn');b.textContent=muted?'UNMUTE':'MUTE';b.classList.toggle('on',muted);}
 
 // ===== صوت منفصل =====
-let audioPlaying=false, audioStartedAt=null, audioPausedAt=0, audioDur=0, audioDragging=false, audioMuted=false;
+let audioPlaying=false,audioStartedAt=null,audioPausedAt=0,audioDur=0,audioDragging=false,audioMuted=false;
 let audioTimer=null;
-
-function playAudio(){
-  const u=document.getElementById('audioUrl').value.trim();
-  if(!u)return st('حط رابط الصوت!');
-  socket.emit('playAudio',{url:u,volume:audioVol/100,muted:audioMuted});
-  audioPlaying=true; audioStartedAt=Date.now()-(audioPausedAt*1000);
-  startAudioTimer(); st('🎵 شغّل الصوت');
-}
-function pauseAudio(){
-  if(audioStartedAt) audioPausedAt=(Date.now()-audioStartedAt)/1000;
-  audioPlaying=false; socket.emit('pauseAudio'); st('🎵 وقّف الصوت');
-}
-function restartAudio(){
-  const u=document.getElementById('audioUrl').value.trim();
-  if(!u)return st('حط رابط الصوت!');
-  socket.emit('restartAudio',{url:u,volume:audioVol/100,muted:audioMuted});
-  audioPlaying=true; audioPausedAt=0; audioStartedAt=Date.now();
-  startAudioTimer(); st('🔄 الصوت من الأول');
-}
-function syncAudio(){socket.emit('syncAll');st('⚡ Sync الصوت');}
-function stopAudio(){
-  socket.emit('stopAudio'); audioPlaying=false; audioPausedAt=0; audioStartedAt=null;
-  updAudioTimer(0); st('⏹ أوقف الصوت');
-}
+function playAudio(){const u=document.getElementById('audioUrl').value.trim();if(!u)return st('PUT AUDIO URL');socket.emit('playAudio',{url:u,volume:audioVol/100,muted:audioMuted});audioPlaying=true;audioStartedAt=Date.now()-(audioPausedAt*1000);startAudioTimer();st('🎵 AUDIO PLAY');}
+function pauseAudio(){if(audioStartedAt)audioPausedAt=(Date.now()-audioStartedAt)/1000;audioPlaying=false;socket.emit('pauseAudio');st('🎵 AUDIO PAUSE');}
+function restartAudio(){const u=document.getElementById('audioUrl').value.trim();if(!u)return st('PUT AUDIO URL');socket.emit('restartAudio',{url:u,volume:audioVol/100,muted:audioMuted});audioPlaying=true;audioPausedAt=0;audioStartedAt=Date.now();startAudioTimer();st('🎵 AUDIO RESTART');}
+function syncAudio(){socket.emit('syncAll');st('⚡ SYNC');}
+function stopAudio(){socket.emit('stopAudio');audioPlaying=false;audioPausedAt=0;audioStartedAt=null;updAudioTimer(0);st('🎵 AUDIO STOP');}
 function setAudioVol(v){audioVol=+v;document.getElementById('audioVolVal').textContent=v+'%';socket.emit('setAudioVolume',{volume:v/100,muted:audioMuted});}
-function toggleAudioMute(){audioMuted=!audioMuted;const b=document.getElementById('audioMuteBtn');b.textContent=audioMuted?'🔊':'🔇';b.classList.toggle('on',audioMuted);socket.emit('setAudioVolume',{volume:audioVol/100,muted:audioMuted});}
-
+function toggleAudioMute(){audioMuted=!audioMuted;const b=document.getElementById('audioMuteBtn');b.textContent=audioMuted?'UNMUTE':'MUTE';b.classList.toggle('on',audioMuted);socket.emit('setAudioVolume',{volume:audioVol/100,muted:audioMuted});}
 function audioSeekMove(v){audioDragging=true;updAudioTimerDisp((v/100)*audioDur);}
 function audioSeekDrop(v){audioDragging=false;audioSeekTo((v/100)*audioDur);}
-function audioSeekTo(s){
-  audioStartedAt=Date.now()-(s*1000); audioPausedAt=s;
-  socket.emit('seekAudio',{seconds:s}); st('⏩ صوت '+fmtA(s));
-}
-
-function startAudioTimer(){
-  clearInterval(audioTimer);
-  audioTimer=setInterval(()=>{
-    if(!audioPlaying||!audioStartedAt)return;
-    const s=(Date.now()-audioStartedAt)/1000;
-    if(!audioDragging){updAudioTimer(s);}
-  },200);
-}
-function updAudioTimer(s){
-  if(s<0)s=0;
-  updAudioTimerDisp(s);
-  if(audioDur>0&&!audioDragging) document.getElementById('audioSeekSl').value=(s/audioDur)*100;
-}
+function audioSeekTo(s){audioStartedAt=Date.now()-(s*1000);audioPausedAt=s;socket.emit('seekAudio',{seconds:s});st('⏩ AUDIO '+fmtA(s));}
+function startAudioTimer(){clearInterval(audioTimer);audioTimer=setInterval(()=>{if(!audioPlaying||!audioStartedAt)return;const s=(Date.now()-audioStartedAt)/1000;if(!audioDragging)updAudioTimer(s);},200);}
+function updAudioTimer(s){if(s<0)s=0;updAudioTimerDisp(s);if(audioDur>0&&!audioDragging)document.getElementById('audioSeekSl').value=(s/audioDur)*100;}
 function updAudioTimerDisp(s){document.getElementById('audioTimerDisp').textContent=fmtA(s);}
 function fmtA(s){if(s<0)s=0;return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');}
-
 socket.on('audioDuration',d=>{if(d.duration>0){audioDur=d.duration;const m=Math.floor((d.duration%3600)/60),s=Math.floor(d.duration%60);document.getElementById('audioSeekEnd').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}});
 
 // ===== seek =====
 function seekMove(v){dragging=true;document.getElementById('timerDisp').textContent=fmt((v/100)*dur);}
 function seekDrop(v){dragging=false;seekTo((v/100)*dur);}
-function seekManual(){const r=document.getElementById('seekIn').value.trim();let s=0;if(r.includes(':')){{const p=r.split(':');s=p.length===2?+p[0]*60+ +p[1]:+p[0]*3600+ +p[1]*60+ +p[2];}}else s=+r;if(isNaN(s))return alert('وقت غلط!');seekTo(s);document.getElementById('seekIn').value='';}
+function seekManual(){const r=document.getElementById('seekIn').value.trim();let s=0;if(r.includes(':')){{const p=r.split(':');s=p.length===2?+p[0]*60+ +p[1]:+p[0]*3600+ +p[1]*60+ +p[2];}}else s=+r;if(isNaN(s))return alert('INVALID TIME');seekTo(s);document.getElementById('seekIn').value='';}
 function seekTo(s){startedAt=Date.now()-(s*1000);pausedAt=s;socket.emit('seek',{seconds:s});st('⏩ '+fmt(s));if(!dragging)updSeek(s);}
-function updSeek(s){if(!dragging&&dur>0){document.getElementById('seekSl').value=(s/dur)*100;}}
+function updSeek(s){if(!dragging&&dur>0)document.getElementById('seekSl').value=(s/dur)*100;}
 
 // ===== تحكم =====
-function sendPlay(){if(!ml[ci])return;const m=ml[ci];socket.emit('play',{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted});playing=true;startedAt=Date.now()-(pausedAt*1000);startTimer();st('▶ تشغيل');document.getElementById('statusPill').textContent='▶ شغّال';}
-function sendPause(){if(startedAt)pausedAt=(Date.now()-startedAt)/1000;playing=false;socket.emit('pause');st('⏸ متوقف');document.getElementById('statusPill').textContent='⏸ متوقف';}
-function sendRestart(){if(!ml[ci])return;const m=ml[ci];socket.emit('restart',{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted});playing=true;pausedAt=0;startedAt=Date.now();startTimer();st('🔄 من الأول');}
-function sendSync(){socket.emit('syncAll');const b=document.getElementById('syncBtn');b.classList.add('flash');setTimeout(()=>b.classList.remove('flash'),400);st('⚡ Sync');}
-function startSession(){socket.emit('startSession');st('▶ بدأت الجلسة');}
-function stopSession(){socket.emit('stopSession');playing=false;startedAt=null;pausedAt=0;updTimer(0);st('⏹ وقّفت الجلسة');document.getElementById('statusPill').textContent='⏹ متوقف';}
-function kickAll(){if(confirm('هتطرد كل الأجهزة؟')){socket.emit('kickAll');st('🚪 تم طرد الكل');}}
+function sendPlay(){if(!ml[ci])return;const m=ml[ci];socket.emit('play',{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted});playing=true;startedAt=Date.now()-(pausedAt*1000);startTimer();st('▶ '+m.name);document.getElementById('statusPill').textContent='PLAYING';}
+function sendPause(){if(startedAt)pausedAt=(Date.now()-startedAt)/1000;playing=false;socket.emit('pause');st('⏸ PAUSED');document.getElementById('statusPill').textContent='PAUSED';}
+function sendRestart(){if(!ml[ci])return;socket.emit('seek',{seconds:0});socket.emit('pause');playing=false;pausedAt=0;startedAt=null;updTimer(0);document.getElementById('seekSl').value=0;st('⏮ RESET TO START');}
+function sendSync(){socket.emit('syncAll');const b=document.getElementById('syncBtn');b.classList.add('flash');setTimeout(()=>b.classList.remove('flash'),400);st('⚡ SYNC SENT');}
+
+let joinAllowed=false;
+function toggleJoin(){
+  joinAllowed=!joinAllowed;
+  socket.emit('setAllowJoin',{allow:joinAllowed});
+  const btn=document.getElementById('joinToggle');
+  if(joinAllowed){btn.textContent='✅ ON';btn.classList.add('on');st('OPEN — DEVICES ON MODE SELECT');}
+  else{btn.textContent='⛔ OFF';btn.classList.remove('on');st('CLOSED — DEVICES ON STANDBY');}
+}
+function kickAll(){if(confirm('KICK ALL DEVICES?')){socket.emit('kickAll');st('▣ ALL DEVICES KICKED');}}
 
 // ===== الأجهزة =====
-function scls(s){return s==='انتظار'?'sw':s==='اختيار وضع'?'sc':s==='عادي'?'sn':'sv';}
+function vbcls(s){return s==='انتظار'?'vb-w':s==='اختيار وضع'?'vb-c':s==='عادي'?'vb-n':'vb-v';}
+function vblbl(s){return s==='انتظار'?'WAIT':s==='اختيار وضع'?'SELECT':s==='عادي'?'NORMAL':'VR';}
 socket.on('viewerList',list=>{
   const el=document.getElementById('viewerList');
-  if(!list.length){el.innerHTML='<div class="empty">لا يوجد أجهزة</div>';return;}
-  el.innerHTML=list.map(v=>`<div class="vitem"><div class="vnum">${v.num}</div><span class="sbadge ${scls(v.status)}">${v.status}</span></div>`).join('');
+  if(!list.length){el.innerHTML='<div class="li-empty">NO DEVICES</div>';return;}
+  el.innerHTML=list.map(v=>`
+    <div class="v-item">
+      <div class="v-num">${v.num}</div>
+      <div class="v-info">
+        <div class="v-name">${v.name||'DEVICE'}</div>
+        <span class="v-badge ${vbcls(v.status)}">${vblbl(v.status)}</span>
+      </div>
+      <button class="v-kick" onclick="kickOne('${v.id}')">KICK</button>
+    </div>`).join('');
 });
 socket.on('viewers',c=>document.getElementById('vCount').textContent=c);
+function kickOne(id){socket.emit('kickOne',{id});st('▣ DEVICE KICKED');}
 
 // ===== ميديا =====
 function selType(t){selType_=t;['video','videoFlat','image','image360'].forEach(x=>document.getElementById('t_'+x)?.classList.remove('sel'));document.getElementById('t_'+t)?.classList.add('sel');}
 function setDeg(v){selDeg=v;document.getElementById('degSl').value=v;document.getElementById('degVal').textContent=v+'°';document.getElementById('degSv').textContent=v+'°';}
-function cmp(d){if(d<=22||d>=338)return'⬆️';if(d<68)return'↗️';if(d<=112)return'➡️';if(d<158)return'↘️';if(d<=202)return'⬇️';if(d<248)return'↙️';if(d<=292)return'⬅️';return'↖️';}
+function cmp(d){if(d<=22||d>=338)return'N';if(d<68)return'NE';if(d<=112)return'E';if(d<158)return'SE';if(d<=202)return'S';if(d<248)return'SW';if(d<=292)return'W';return'NW';}
 function saveML(){try{localStorage.setItem('vr_ml',JSON.stringify(ml));}catch{}}
 function saveAL(){try{localStorage.setItem('vr_al',JSON.stringify(al));}catch{}}
+
+let editIdx=-1;
 function renderML(){
   const el=document.getElementById('mediaList');
-  if(!ml.length){el.innerHTML='<div class="empty">لا يوجد محتوى</div>';return;}
-  el.innerHTML=ml.map((m,i)=>`<div class="mitem ${i===ci?'active':''}" onclick="ci=${i};renderML()">
-    <div class="mic">${TI[m.type]}</div>
-    <div class="min"><div class="mname">${m.name}</div><div class="mmeta"><span>${TL[m.type]}</span><span>${cmp(m.degree||0)} ${m.degree||0}°</span></div></div>
-    <div class="macts"><button class="pbtn" onclick="event.stopPropagation();showM(${i})">▶</button><button class="dbtn" onclick="event.stopPropagation();delM(${i})">🗑</button></div>
-  </div>`).join('');
+  if(!ml.length){el.innerHTML='<div class="li-empty">NO MEDIA</div>';return;}
+  el.innerHTML=ml.map((m,i)=>{
+    if(editIdx===i) return `
+      <div class="list-item edit-form">
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <input class="tac-input rtl" id="ei_name" value="${m.name}" style="flex:1;min-width:80px;font-family:'Noto Kufi Arabic',sans-serif;direction:rtl;"/>
+          <select class="tac-input" id="ei_type" style="flex:1;min-width:80px;">
+            ${['video','videoFlat','image','image360'].map(t=>`<option value="${t}" ${m.type===t?'selected':''}>${TL[t]}</option>`).join('')}
+          </select>
+        </div>
+        <input class="tac-input ltr" id="ei_url" value="${m.url}" style="width:100%;"/>
+        <div style="display:flex;align-items:center;gap:5px;">
+          <span style="font-size:.6rem;color:var(--mu);font-family:'Oxanium',monospace;">DIR</span>
+          <input type="range" style="flex:1;accent-color:var(--am);" min="0" max="359" value="${m.degree||0}" id="ei_deg" oninput="document.getElementById('ei_degv').textContent=this.value+'°'">
+          <span id="ei_degv" style="font-size:.65rem;color:var(--am2);min-width:28px;font-family:'Oxanium',monospace;">${m.degree||0}°</span>
+        </div>
+        <div style="display:flex;gap:4px;">
+          <button class="tac-btn" style="flex:1;" onclick="saveEdit(${i})">SAVE</button>
+          <button class="tac-btn danger" style="flex:1;" onclick="editIdx=-1;renderML()">CANCEL</button>
+        </div>
+      </div>`;
+    return `<div class="list-item ${i===ci?'active':''}" onclick="ci=${i};renderML()">
+      <div class="li-icon">${TI[m.type]}</div>
+      <div class="li-info">
+        <div class="li-name">${m.name}</div>
+        <div class="li-meta"><span>${TL[m.type]}</span><span>${cmp(m.degree||0)} ${m.degree||0}°</span></div>
+      </div>
+      <div class="li-acts">
+        <button class="li-play" onclick="event.stopPropagation();showM(${i})">▶</button>
+        <button class="li-edit" onclick="event.stopPropagation();startEdit(${i})">✏</button>
+        <button class="li-del"  onclick="event.stopPropagation();delM(${i})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
 }
-function addMedia(){const n=document.getElementById('mName').value.trim(),u=document.getElementById('mUrl').value.trim();if(!n||!u)return alert('حط اسم ورابط!');ml.push({name:n,type:selType_,url:u,degree:selDeg});document.getElementById('mName').value='';document.getElementById('mUrl').value='';setDeg(0);saveML();renderML();st('✅ '+n);}
+function startEdit(i){editIdx=i;renderML();document.getElementById('ei_name')?.focus();}
+function saveEdit(i){
+  const n=document.getElementById('ei_name').value.trim(),u=document.getElementById('ei_url').value.trim(),t=document.getElementById('ei_type').value,d=parseInt(document.getElementById('ei_deg').value);
+  if(!n||!u)return alert('NAME + URL REQUIRED');
+  ml[i]={...ml[i],name:n,url:u,type:t,degree:d};editIdx=-1;saveML();renderML();st('SAVED: '+n);
+}
+function addMedia(){const n=document.getElementById('mName').value.trim(),u=document.getElementById('mUrl').value.trim();if(!n||!u)return alert('NAME + URL REQUIRED');ml.push({name:n,type:selType_,url:u,degree:selDeg});document.getElementById('mName').value='';document.getElementById('mUrl').value='';setDeg(0);saveML();renderML();st('+ ADDED: '+n);}
 function delM(i){ml.splice(i,1);if(ci>=ml.length)ci=Math.max(0,ml.length-1);saveML();renderML();}
-function showM(i){ci=i;const m=ml[i];renderML();pausedAt=0;startedAt=Date.now();playing=true;const e=(m.type==='image'||m.type==='image360')?'show':'restart';socket.emit(e,{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted});startTimer();st('▶ '+m.name);}
+function showM(i){ci=i;const m=ml[i];renderML();pausedAt=0;startedAt=Date.now();playing=true;const e=(m.type==='image'||m.type==='image360')?'show':'restart';socket.emit(e,{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted});startTimer();st('▶ '+m.name);document.getElementById('statusPill').textContent='PLAYING';}
 
 // ===== قائمة الصوت =====
-let al = [];
-try{const s=localStorage.getItem('vr_al');if(s)al=JSON.parse(s);}catch{}
-
+let al=[];try{const s=localStorage.getItem('vr_al');if(s)al=JSON.parse(s);}catch{}
+let editAIdx=-1;
 function renderAL(){
   const el=document.getElementById('audioList');
-  if(!al.length){el.innerHTML='<div class="empty">لا يوجد أصوات</div>';return;}
-  el.innerHTML=al.map((a,i)=>`<div class="mitem">
-    <div class="mic">🎵</div>
-    <div class="min"><div class="mname">${a.name}</div><div class="mmeta"><span>${a.url.length>30?'…'+a.url.slice(-25):a.url}</span></div></div>
-    <div class="macts">
-      <button class="pbtn" style="background:var(--ac2)" onclick="playAudioItem(${i})">▶</button>
-      <button class="dbtn" onclick="delA(${i})">🗑</button>
-    </div>
-  </div>`).join('');
+  if(!al.length){el.innerHTML='<div class="li-empty">NO AUDIO</div>';return;}
+  el.innerHTML=al.map((a,i)=>{
+    if(editAIdx===i) return `
+      <div class="list-item edit-form" style="border-color:rgba(139,92,246,.5)!important;">
+        <input class="tac-input rtl" id="ai_name" value="${a.name}" style="width:100%;font-family:'Noto Kufi Arabic',sans-serif;direction:rtl;"/>
+        <input class="tac-input ltr" id="ai_url"  value="${a.url}"  style="width:100%;"/>
+        <div style="display:flex;gap:4px;">
+          <button class="tac-btn purple" style="flex:1;" onclick="saveAEdit(${i})">SAVE</button>
+          <button class="tac-btn danger" style="flex:1;" onclick="editAIdx=-1;renderAL()">CANCEL</button>
+        </div>
+      </div>`;
+    return `<div class="list-item">
+      <div class="li-icon">🎵</div>
+      <div class="li-info">
+        <div class="li-name">${a.name}</div>
+        <div class="li-meta"><span>${a.url.length>30?'…'+a.url.slice(-24):a.url}</span></div>
+      </div>
+      <div class="li-acts">
+        <button class="li-play" style="background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.4);color:#a78bfa;" onclick="playAudioItem(${i})">▶</button>
+        <button class="li-edit" onclick="editAIdx=${i};renderAL()">✏</button>
+        <button class="li-del"  onclick="delA(${i})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
 }
-function addAudio(){
-  const n=document.getElementById('aName').value.trim(),u=document.getElementById('aUrlIn').value.trim();
-  if(!n||!u)return alert('حط اسم ورابط!');
-  al.push({name:n,url:u});
-  document.getElementById('aName').value='';document.getElementById('aUrlIn').value='';
-  saveAL();renderAL();st('🎵 ✅ '+n);
-}
+function saveAEdit(i){const n=document.getElementById('ai_name').value.trim(),u=document.getElementById('ai_url').value.trim();if(!n||!u)return alert('NAME + URL REQUIRED');al[i]={name:n,url:u};editAIdx=-1;saveAL();renderAL();st('🎵 SAVED: '+n);}
+function addAudio(){const n=document.getElementById('aName').value.trim(),u=document.getElementById('aUrlIn').value.trim();if(!n||!u)return alert('NAME + URL REQUIRED');al.push({name:n,url:u});document.getElementById('aName').value='';document.getElementById('aUrlIn').value='';saveAL();renderAL();st('🎵 ADDED: '+n);}
 function delA(i){al.splice(i,1);saveAL();renderAL();}
-function playAudioItem(i){
-  const a=al[i];
-  document.getElementById('audioUrl').value=a.url;
-  socket.emit('playAudio',{url:a.url,volume:audioVol/100,muted:audioMuted});
-  audioPlaying=true; audioPausedAt=0; audioStartedAt=Date.now();
-  startAudioTimer(); st('🎵 ▶ '+a.name);
-}
+function playAudioItem(i){const a=al[i];document.getElementById('audioUrl').value=a.url;socket.emit('playAudio',{url:a.url,volume:audioVol/100,muted:audioMuted});audioPlaying=true;audioPausedAt=0;audioStartedAt=Date.now();startAudioTimer();st('🎵 ▶ '+a.name);}
 
 // ===== تايمر =====
 function startTimer(){clearInterval(timer);timer=setInterval(()=>{if(!playing||!startedAt)return;const s=(Date.now()-startedAt)/1000;if(!dragging){updTimer(s);updSeek(s);}},200);}
