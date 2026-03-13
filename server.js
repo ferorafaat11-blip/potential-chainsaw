@@ -134,6 +134,10 @@ io.on('connection', function(socket) {
     io.emit('audioState', { playing: state.audioPlaying, url: state.audioUrl, startedAt: state.audioStartedAt, pausedAt: state.audioPausedAt, volume: state.audioVolume, serverTime: Date.now() });
   });
 
+  socket.on('setSize', function(data) {
+    io.emit('setSize', { size: data.size });
+  });
+
   socket.on('setAudioVolume', function(data) {
     if (data && data.volume !== undefined) state.audioVolume = data.volume;
     io.emit('audioVolume', { volume: state.audioVolume });
