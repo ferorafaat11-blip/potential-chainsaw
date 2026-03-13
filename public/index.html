@@ -105,10 +105,8 @@
   socket.emit('autoJoin');
   socket.on('noRoom', () => setTimeout(() => socket.emit('autoJoin'), 3000));
   socket.on('joinOk', () => {
-    // دخل مباشرة لشاشة الاختيار بدون ما تنتظر أمر من المضيف
-    document.getElementById('waitScreen').style.display = 'none';
-    sceneStarted = true;
-    showModeScreen();
+    // ابقى في شاشة الانتظار
+    document.getElementById('waitScreen').style.display = 'flex';
   });
 
   // عنصر الصوت المنفصل
@@ -227,13 +225,11 @@
   function handleState(data) {
     if (!data.url) return;
     pendingData = data;
-    if (!sceneStarted) {
-      sceneStarted = true;
-      document.getElementById('waitScreen').style.display = 'none';
-      showModeScreen();
-    } else if (currentMode) {
+    // لو الجلسة بدأت فعلاً وفيه وضع محدد — طبّق
+    if (sceneStarted && currentMode) {
       applyState(data);
     }
+    // غير كده: افضل في شاشة الانتظار لحد ما sessionStart
   }
 
   socket.on('setVolume', (data) => {
