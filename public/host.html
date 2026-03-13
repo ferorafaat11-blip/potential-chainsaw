@@ -413,6 +413,10 @@ body::after{
         <button class="t-btn t-restart" onclick="sendRestart()">⏮ أول</button>
         <button class="t-btn t-sync" id="syncBtn" onclick="sendSync()">⚡ Sync</button>
       </div>
+      <div class="t-row">
+        <button class="t-btn" id="plBtn" onclick="togglePlaylist()" style="background:rgba(45,212,191,.1);border-color:rgba(45,212,191,.4);color:var(--teal);flex:2;">▶▶ تشغيل البلاي ليست</button>
+        <button class="t-btn" onclick="plNext()" style="background:rgba(45,212,191,.06);border-color:rgba(45,212,191,.2);color:var(--teal);flex:1;">⏭ التالي</button>
+      </div>
       <div class="vol-row">
         <span class="vol-lbl">🎬 صوت</span>
         <input type="range" class="vol-sl" id="volSl" min="0" max="100" value="100" oninput="setVolume(this.value)">
@@ -692,13 +696,103 @@ function addAudio(){const n=document.getElementById('aName').value.trim(),u=docu
 function delA(i){al.splice(i,1);saveAL();renderAL();}
 function playAudioItem(i){const a=al[i];document.getElementById('audioUrl').value=a.url;socket.emit('playAudio',{url:a.url,volume:audioVol/100,muted:audioMuted});audioPlaying=true;audioPausedAt=0;audioStartedAt=Date.now();startAudioTimer();st('🎵 ▶ '+a.name);}
 
-// ===== تايمر =====
+// ===== بلاي ليست =====
+let plActive = false;
+let plTimer = null;
+const IMG_DURATION = 10; // ثواني للصورة
+
+function togglePlaylist() {
+  if (plActive) {
+    plStop();
+  } else {
+    plStart();
+  }
+}
+
+function plStart() {
+  if (!ml.length) return st('القائمة فاضية!');
+  plActive = true;
+  ci = 0;
+  const btn = document.getElementById('plBtn');
+  btn.textContent = '⏹ وقّف البلاي ليست';
+  btn.style.background = 'rgba(239,68,68,.15)';
+  btn.style.borderColor = 'rgba(239,68,68,.4)';
+  btn.style.color = 'var(--red)';
+  plPlayCurrent();
+}
+
+function plStop() {
+  plActive = false;
+  clearTimeout(plTimer);
+  const btn = document.getElementById('plBtn');
+  btn.textContent = '▶▶ تشغيل البلاي ليست';
+  btn.style.background = 'rgba(45,212,191,.1)';
+  btn.style.borderColor = 'rgba(45,212,191,.4)';
+  btn.style.color = 'var(--teal)';
+  st('⏹ البلاي ليست وقفت');
+}
+
+function plPlayCurrent() {
+  if (!plActive || !ml.length) return;
+  const m = ml[ci];
+  renderML();
+  const isImg = (m.type === 'image' || m.type === 'image360');
+  pausedAt = 0; startedAt = Date.now(); playing = !isImg;
+  const ev = isImg ? 'show' : 'restart';
+  socket.emit(ev, { url: m.url, type: m.type, degree: m.degree || 0, volume: vol / 100, muted });
+  if (!isImg) startTimer();
+  st('▶▶ ' + (ci + 1) + '/' + ml.length + ' — ' + m.name);
+  document.getElementById('statusPill').textContent = 'شغّال';
+
+  if (isImg) {
+    // الصورة: انتظر IMG_DURATION ثانية
+    plTimer = setTimeout(plNext, IMG_DURATION * 1000);
+  }
+  // الفيديو: بيتابع عن طريق checkPlEnd
+}
+
+function plNext() {
+  if (!plActive) return;
+  clearTimeout(plTimer);
+  ci++;
+  if (ci >= ml.length) {
+    // خلصت القائمة
+    plStop();
+    sendPause();
+    st('✅ البلاي ليست خلصت');
+    return;
+  }
+  plPlayCurrent();
+}
+
+// راقب الفيديو لما يخلص
+let plCheckInterval = null;
+function startPlCheck() {
+  clearInterval(plCheckInterval);
+  plCheckInterval = setInterval(function() {
+    if (!plActive || !playing || !dur) return;
+    const elapsed = (Date.now() - startedAt) / 1000;
+    if (elapsed >= dur - 0.5) {
+      clearInterval(plCheckInterval);
+      plNext();
+    }
+  }, 500);
+}
+
+// لما السيرفر يبعت مدة الفيديو وإحنا في playlist وده بيغير dur
+socket.on('videoDuration', d => {
+  if (d.duration > 0) {
+    dur = d.duration;
+    const m = Math.floor((d.duration % 3600) / 60), s = Math.floor(d.duration % 60);
+    document.getElementById('seekEnd').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    if (plActive) startPlCheck();
+  }
+});
 function startTimer(){clearInterval(timer);timer=setInterval(()=>{if(!playing||!startedAt)return;const s=(Date.now()-startedAt)/1000;if(!dragging){updTimer(s);updSeek(s);}},200);}
 function updTimer(s){if(s<0)s=0;document.getElementById('timerDisp').textContent=fmt(s);}
 function fmt(s){if(s<0)s=0;return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');}
 function st(m){document.getElementById('statusBox').textContent=m;}
 
-socket.on('videoDuration',d=>{if(d.duration>0){dur=d.duration;const m=Math.floor((d.duration%3600)/60),s=Math.floor(d.duration%60);document.getElementById('seekEnd').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}});
 socket.on('state',d=>{playing=d.playing;startedAt=d.startedAt;pausedAt=d.pausedAt||0;if(!playing)updTimer(pausedAt);});
 
 renderML(); renderAL(); startTimer();
