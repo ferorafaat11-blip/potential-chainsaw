@@ -131,6 +131,12 @@ io.on('connection', (socket) => {
     io.emit('audioState', { playing:false, stop:true, volume:state.audioVolume });
   });
 
+  socket.on('seekAudio', (data) => {
+    state.audioPausedAt  = data.seconds;
+    state.audioStartedAt = Date.now() - (data.seconds * 1000);
+    io.emit('audioState', { playing:state.audioPlaying, url:state.audioUrl, startedAt:state.audioStartedAt, pausedAt:state.audioPausedAt, volume:state.audioVolume, serverTime:Date.now() });
+  });
+
   socket.on('setAudioVolume', (data) => {
     if (data?.volume !== undefined) state.audioVolume = data.volume;
     io.emit('audioVolume', { volume: state.audioVolume });
