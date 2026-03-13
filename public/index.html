@@ -185,9 +185,12 @@
     <video id="videoFlat" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
   </a-assets>
   <a-videosphere id="videoSphere" src="#video360"  visible="false"></a-videosphere>
-  <a-video       id="videoPanel"  src="#videoFlat" width="6" height="3.4" position="0 1.6 -4" visible="false"></a-video>
-  <a-sky         id="imageSky"    src="" visible="false" radius="100"></a-sky>
-  <a-image       id="imagePanel"  src="" width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
+  <a-entity id="videoPanelWrap" position="0 0 0">
+    <a-video id="videoPanel" src="#videoFlat" width="6" height="3.4" position="0 1.6 -4" visible="false"></a-video>
+  </a-entity>
+  <a-entity id="imagePanelWrap" position="0 0 0">
+    <a-image id="imagePanel" src="" width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
+  </a-entity>
   <a-entity id="rig" rotation="0 270 0" position="0 0 0">
     <a-camera id="mainCamera" look-controls wasd-controls="enabled:false">
       <a-cursor color="#e8a030" radius="0.005" position="0 0 -1" geometry="primitive:ring;radiusInner:0.004;radiusOuter:0.008" material="color:#e8a030;shader:flat;opacity:0.7" id="mainCursor"></a-cursor>
@@ -200,7 +203,8 @@
   const videoFlat = document.getElementById('videoFlat');
   const scene     = document.getElementById('scene');
   const rig       = document.getElementById('rig');
-  const videoSphere = document.getElementById('videoSphere');
+  const videoPanelWrap = document.getElementById('videoPanelWrap');
+  const imagePanelWrap = document.getElementById('imagePanelWrap');
   const videoPanel  = document.getElementById('videoPanel');
   const imageSky    = document.getElementById('imageSky');
   const imagePanel  = document.getElementById('imagePanel');
@@ -292,16 +296,20 @@
   }
 
   function hideAll(){
-    videoSphere.setAttribute('visible',false); videoPanel.setAttribute('visible',false);
-    imageSky.setAttribute('visible',false);    imagePanel.setAttribute('visible',false);
+    videoSphere.setAttribute('visible',false);
+    videoPanel.setAttribute('visible',false);
+    videoPanelWrap.setAttribute('visible',false);
+    imageSky.setAttribute('visible',false);
+    imagePanel.setAttribute('visible',false);
+    imagePanelWrap.setAttribute('visible',false);
     video360.pause(); videoFlat.pause();
   }
 
   function applyState(data){
     hideAll(); setCameraYaw(data.degree||0);
     var s = (data.size||100)/100;
-    videoPanel.setAttribute('width', 6*s); videoPanel.setAttribute('height', 3.4*s);
-    imagePanel.setAttribute('width', 5*s); imagePanel.setAttribute('height', 3*s);
+    videoPanelWrap.setAttribute('scale', s + ' ' + s + ' ' + s);
+    imagePanelWrap.setAttribute('scale', s + ' ' + s + ' ' + s);
     if(data.type==='video'){
       if(video360.src!==data.url){video360.src=data.url;video360.load();}
       videoSphere.setAttribute('visible',true); applyVolume(video360,data.volume,data.muted);
@@ -311,6 +319,7 @@
       } else { if(data.pausedAt)video360.currentTime=data.pausedAt; video360.pause(); }
     } else if(data.type==='videoFlat'){
       if(videoFlat.src!==data.url){videoFlat.src=data.url;videoFlat.load();}
+      videoPanelWrap.setAttribute('visible',true);
       videoPanel.setAttribute('visible',true); applyVolume(videoFlat,data.volume,data.muted);
       if(data.playing&&data.startedAt){
         const e=(Date.now()-data.startedAt)/1000; videoFlat.currentTime=Math.max(0,e);
@@ -319,6 +328,7 @@
     } else if(data.type==='image360'){
       imageSky.setAttribute('src',data.url); imageSky.setAttribute('visible',true);
     } else if(data.type==='image'){
+      imagePanelWrap.setAttribute('visible',true);
       imagePanel.setAttribute('src',data.url); imagePanel.setAttribute('visible',true);
     }
   }
@@ -330,13 +340,8 @@
 
   socket.on('setSize', function(data) {
     var s = (data.size || 100) / 100;
-    // غير الحجم الفعلي + scale مع بعض عشان يشتغل في العادي والـ VR
-    videoPanel.setAttribute('width',  6 * s);
-    videoPanel.setAttribute('height', 3.4 * s);
-    videoPanel.setAttribute('scale',  '1 1 1');
-    imagePanel.setAttribute('width',  5 * s);
-    imagePanel.setAttribute('height', 3 * s);
-    imagePanel.setAttribute('scale',  '1 1 1');
+    videoPanelWrap.setAttribute('scale', s + ' ' + s + ' ' + s);
+    imagePanelWrap.setAttribute('scale', s + ' ' + s + ' ' + s);
   });
 
   socket.on('setVolume',(data)=>{
