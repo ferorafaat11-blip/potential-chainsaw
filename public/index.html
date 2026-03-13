@@ -101,10 +101,31 @@
 
   let sceneStarted = false, pendingData = null, currentMode = null;
 
-  // ينضم تلقائي لأول room
+  // اتصل بالسيرفر تلقائي
   socket.emit('autoJoin');
-  socket.on('noRoom', () => {
-    setTimeout(() => socket.emit('autoJoin'), 3000);
+  socket.on('noRoom', () => setTimeout(() => socket.emit('autoJoin'), 3000));
+  socket.on('joinOk', () => {});
+
+  // عنصر الصوت المنفصل
+  const audioEl = new Audio();
+  audioEl.preload = 'auto';
+
+  socket.on('audioState', (data) => {
+    if (!data.url) { audioEl.pause(); audioEl.src = ''; return; }
+    if (audioEl.src !== data.url) { audioEl.src = data.url; audioEl.load(); }
+    audioEl.volume = Math.max(0, Math.min(1, data.volume ?? 0.8));
+    if (data.playing && data.startedAt) {
+      const elapsed = (Date.now() - data.startedAt) / 1000;
+      audioEl.currentTime = Math.max(0, elapsed);
+      audioEl.play().catch(() => {});
+    } else if (!data.playing) {
+      if (data.pausedAt) audioEl.currentTime = data.pausedAt;
+      audioEl.pause();
+    }
+  });
+
+  socket.on('audioVolume', (data) => {
+    audioEl.volume = Math.max(0, Math.min(1, data.volume ?? 0.8));
   });
 
   // لو اتطرد
@@ -217,6 +238,28 @@
     });
   });
 
+  // ===== الصوت المنفصل =====
+  const bgAudio = new Audio();
+  bgAudio.crossOrigin = 'anonymous';
+
+  socket.on('audioState', (data) => {
+    if (data.url && bgAudio.src !== data.url) bgAudio.src = data.url;
+    if (data.playing) {
+      const offset = (Date.now() - data.serverTime) / 1000;
+      const pos = (data.pausedAt || 0) + offset;
+      bgAudio.currentTime = pos > 0 ? pos : 0;
+      bgAudio.volume = data.volume !== undefined ? data.volume : 1;
+      bgAudio.play().catch(()=>{});
+    } else {
+      bgAudio.pause();
+      if (data.pausedAt !== undefined) bgAudio.currentTime = data.pausedAt;
+    }
+  });
+
+  socket.on('audioVolume', (data) => {
+    if (data.volume !== undefined) bgAudio.volume = data.volume;
+  });
+
   scene.addEventListener('exit-vr', () => { currentMode = 'normal'; });
   socket.on('state', handleState);
   socket.on('sync',  handleState);
@@ -231,7 +274,7 @@
   });
 
   socket.on('sessionStop', () => {
-    video360.pause(); videoFlat.pause();
+    video360.pause(); videoFlat.pause(); bgAudio.pause();
     scene.style.display = 'none';
     document.getElementById('switchBtn').style.display = 'none';
     document.getElementById('modeScreen').style.display = 'none';
