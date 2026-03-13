@@ -259,6 +259,316 @@
   function showModeScreen(){
     scene.style.display='none';
     document.getElementById('switchBtn').style.display='none';
+    document.getElementById('waitScreen').style.display='none';
+    document.getElementById('modeScreen').style.display='flex';
+    socket.emit('statusUpdate',{status:'اختيار وضع'});
+  }
+  function startMode(mode){
+    currentMode=mode;
+    document.getElementById('modeScreen').style.display='none';
+    scene.style.display='block';
+    document.getElementById('switchBtn').style.display='block';
+    socket.emit('statusUpdate',{status:mode==='vr'?'VR':'عادي'});
+    if(mode==='vr')scene.enterVR();
+    if(pendingData)applyState(pendingData);
+  }
+
+  function setCameraYaw(degree){rig.setAttribute('rotation',{x:0,y:degree,z:0});}
+
+  function applyVolume(video,volume,muted){
+    video.volume=Math.max(0,Math.min(1,volume??1));
+    video.muted=muted??false;
+    video.addEventListener('loadedmetadata',()=>{
+      if(video.duration&&!isNaN(video.duration))socket.emit('reportDuration',{duration:video.duration});
+    },{once:true});
+    if(video.duration&&!isNaN(video.duration))socket.emit('reportDuration',{duration:video.duration});
+  }
+
+  function hideAll(){
+    videoSphere.setAttribute('visible',false); videoPanel.setAttribute('visible',false);
+    imageSky.setAttribute('visible',false);    imagePanel.setAttribute('visible',false);
+    video360.pause(); videoFlat.pause();
+  }
+
+  function applyState(data){
+    hideAll(); setCameraYaw(data.degree||0);
+    if(data.type==='video'){
+      if(video360.src!==data.url){video360.src=data.url;video360.load();}
+      videoSphere.setAttribute('visible',true); applyVolume(video360,data.volume,data.muted);
+      if(data.playing&&data.startedAt){
+        const e=(Date.now()-data.startedAt)/1000; video360.currentTime=Math.max(0,e);
+        video360.play().catch(()=>{video360.muted=true;video360.play();});
+      } else { if(data.pausedAt)video360.currentTime=data.pausedAt; video360.pause(); }
+    } else if(data.type==='videoFlat'){
+      if(videoFlat.src!==data.url){videoFlat.src=data.url;videoFlat.load();}
+      videoPanel.setAttribute('visible',true); applyVolume(videoFlat,data.volume,data.muted);
+      if(data.playing&&data.startedAt){
+        const e=(Date.now()-data.startedAt)/1000; videoFlat.currentTime=Math.max(0,e);
+        videoFlat.play().catch(()=>{videoFlat.muted=true;videoFlat.play();});
+      } else { if(data.pausedAt)videoFlat.currentTime=data.pausedAt; videoFlat.pause(); }
+    } else if(data.type==='image360'){
+      imageSky.setAttribute('src',data.url); imageSky.setAttribute('visible',true);
+    } else if(data.type==='image'){
+      imagePanel.setAttribute('src',data.url); imagePanel.setAttribute('visible',true);
+    }
+  }
+
+  function handleState(data){
+    if(!data.url)return; pendingData=data;
+    if(sceneStarted&&currentMode)applyState(data);
+  }
+
+  socket.on('setVolume',(data)=>{
+    [video360,videoFlat].forEach(v=>{v.volume=Math.max(0,Math.min(1,data.volume??1));v.muted=data.muted??false;});
+  });
+
+  socket.on('state',handleState);
+  socket.on('sync',handleState);
+
+  socket.on('sessionStart',()=>{
+    sceneStarted = true;
+    document.getElementById('waitScreen').style.display='none';
+    document.getElementById('modeScreen').style.display='none';
+    showModeScreen();
+  });
+
+  socket.on('sessionStop',()=>{
+    video360.pause(); videoFlat.pause(); bgAudio.pause();
+    scene.style.display='none';
+    document.getElementById('switchBtn').style.display='none';
+    document.getElementById('modeScreen').style.display='none';
+    document.getElementById('waitScreen').style.display='flex';
+    sceneStarted=false; currentMode=null; pendingData=null;
+    socket.emit('statusUpdate',{status:'انتظار'});
+  });
+</script>
+</body>
+</html>
+        radial-gradient(1.5px 1.5px at 50% 90%, rgba(180,200,255,.5) 0%, transparent 100%);
+      pointer-events:none;
+    }
+
+    .w-orb{
+      width:130px;height:130px;border-radius:50%;
+      background:radial-gradient(circle at 35% 35%, #1e3fff 0%, #0d1f8a 50%, #050a2e 100%);
+      box-shadow: 0 0 40px rgba(30,63,255,.5), 0 0 80px rgba(30,63,255,.2), inset 0 0 30px rgba(255,255,255,.05);
+      position:relative; animation:orbFloat 4s ease-in-out infinite;
+      flex-shrink:0;
+    }
+    .w-orb::after{
+      content:'🥽'; position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      font-size:2.8rem; filter:drop-shadow(0 0 10px rgba(100,160,255,.8));
+    }
+    @keyframes orbFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+
+    .w-ring{
+      position:absolute;width:160px;height:160px;border-radius:50%;
+      border:1px solid rgba(30,63,255,.25);
+      animation:ringPulse 2.5s ease-out infinite;
+    }
+    .w-ring:nth-child(2){animation-delay:.6s;width:200px;height:200px;border-color:rgba(30,63,255,.12);}
+    .w-ring:nth-child(3){animation-delay:1.2s;width:240px;height:240px;border-color:rgba(30,63,255,.06);}
+    @keyframes ringPulse{0%{opacity:1;transform:scale(.8);}100%{opacity:0;transform:scale(1.5);}}
+
+    .w-title{
+      font-family:'Oxanium',monospace; font-size:1.5rem; font-weight:800;
+      color:#fff; letter-spacing:6px; text-transform:uppercase;
+      text-shadow:0 0 30px rgba(100,140,255,.8);
+      position:relative; z-index:1;
+    }
+    .w-sub{
+      font-size:.85rem; color:rgba(140,160,220,.7);
+      position:relative; z-index:1; letter-spacing:1px;
+      display:flex; align-items:center; gap:8px;
+    }
+    .w-dots span{
+      display:inline-block; width:5px; height:5px; border-radius:50%;
+      background:rgba(100,140,255,.6); animation:dotBlink 1.4s infinite;
+    }
+    .w-dots span:nth-child(2){animation-delay:.2s;}
+    .w-dots span:nth-child(3){animation-delay:.4s;}
+    @keyframes dotBlink{0%,80%,100%{opacity:.2;}40%{opacity:1;}}
+
+    /* ─── MODE SCREEN ─── */
+    #modeScreen{
+      display:none;position:fixed;inset:0;z-index:9998;
+      flex-direction:column;align-items:center;justify-content:center;
+      gap:24px;
+      background:radial-gradient(ellipse 90% 80% at 50% 50%, #08102a 0%, #030508 100%);
+      overflow:hidden;
+    }
+    #modeScreen::before{
+      content:'';position:absolute;inset:0;pointer-events:none;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 80%, rgba(232,160,48,.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 80% 20%, rgba(30,63,255,.08) 0%, transparent 60%);
+    }
+
+    .m-title{
+      font-family:'Oxanium',monospace; font-size:1rem; font-weight:800;
+      color:rgba(180,200,255,.7); letter-spacing:4px; text-transform:uppercase;
+      position:relative; z-index:1;
+    }
+
+    .mode-cards{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1;}
+
+    .mode-card{
+      width:150px; padding:24px 16px;
+      border-radius:12px; border:1px solid;
+      display:flex; flex-direction:column; align-items:center; gap:10px;
+      cursor:pointer; transition:all .2s; position:relative; overflow:hidden;
+    }
+    .mode-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .2s;background:currentColor;}
+    .mode-card:hover::before{opacity:.06;}
+    .mode-card:active{transform:scale(.96);}
+
+    .mc-normal{
+      background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.15); color:#fff;
+    }
+    .mc-normal:hover{border-color:rgba(255,255,255,.35); box-shadow:0 0 30px rgba(255,255,255,.08);}
+
+    .mc-vr{
+      background:rgba(232,160,48,.07); border-color:rgba(232,160,48,.35); color:#e8a030;
+    }
+    .mc-vr:hover{border-color:rgba(232,160,48,.6); box-shadow:0 0 30px rgba(232,160,48,.15);}
+
+    .mc-icon{font-size:2.8rem; line-height:1;}
+    .mc-name{font-size:.95rem; font-weight:700; color:inherit;}
+    .mc-desc{font-size:.65rem; color:rgba(160,180,220,.5); text-align:center; line-height:1.4;}
+
+    /* ─── SWITCH BTN ─── */
+    #switchBtn{
+      display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      z-index:9997; padding:10px 24px;
+      background:rgba(0,0,0,.5); backdrop-filter:blur(16px);
+      border:1px solid rgba(232,160,48,.3); border-radius:50px;
+      color:rgba(232,160,48,.8); font-size:.82rem; font-weight:700;
+      cursor:pointer; font-family:'Noto Kufi Arabic',sans-serif;
+      transition:all .2s; white-space:nowrap;
+    }
+    #switchBtn:hover{border-color:rgba(232,160,48,.6);color:#e8a030;background:rgba(232,160,48,.08);}
+
+    a-scene{width:100vw;height:100vh;}
+  </style>
+</head>
+<body>
+
+<!-- WAIT SCREEN -->
+<div id="waitScreen">
+  <div class="w-ring"></div>
+  <div class="w-ring"></div>
+  <div class="w-ring"></div>
+  <div class="w-orb"></div>
+  <div class="w-title">VR 360</div>
+  <div class="w-sub">
+    في انتظار المضيف
+    <div class="w-dots"><span></span><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- MODE SCREEN -->
+<div id="modeScreen">
+  <div class="m-title">اختار وضع العرض</div>
+  <div class="mode-cards">
+    <div class="mode-card mc-normal" onclick="startMode('normal')">
+      <div class="mc-icon">📱</div>
+      <div class="mc-name">عادي</div>
+      <div class="mc-desc">شاشة واحدة<br>بدون نظارة</div>
+    </div>
+    <div class="mode-card mc-vr" onclick="startMode('vr')">
+      <div class="mc-icon">🥽</div>
+      <div class="mc-name">VR</div>
+      <div class="mc-desc">شاشتين<br>للنظارة</div>
+    </div>
+  </div>
+</div>
+
+<button id="switchBtn" onclick="showModeScreen()">🔄 غيّر الوضع</button>
+
+<a-scene id="scene"
+  vr-mode-ui="enabled:true;cardboardModeEnabled:true"
+  device-orientation-permission-ui="enabled:true"
+  style="display:none">
+  <a-assets>
+    <video id="video360"  crossorigin="anonymous" loop playsinline webkit-playsinline></video>
+    <video id="videoFlat" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
+  </a-assets>
+  <a-videosphere id="videoSphere" src="#video360"  visible="false"></a-videosphere>
+  <a-video       id="videoPanel"  src="#videoFlat" width="6" height="3.4" position="0 1.6 -4" visible="false"></a-video>
+  <a-sky         id="imageSky"    src="" visible="false" radius="100"></a-sky>
+  <a-image       id="imagePanel"  src="" width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
+  <a-entity id="rig" rotation="0 270 0" position="0 0 0">
+    <a-camera id="mainCamera" look-controls wasd-controls="enabled:false">
+      <a-cursor color="#e8a030" radius="0.005" position="0 0 -1" geometry="primitive:ring;radiusInner:0.004;radiusOuter:0.008" material="color:#e8a030;shader:flat;opacity:0.7" id="mainCursor"></a-cursor>
+    </a-camera>
+  </a-entity>
+</a-scene>
+
+<script>
+  const video360  = document.getElementById('video360');
+  const videoFlat = document.getElementById('videoFlat');
+  const scene     = document.getElementById('scene');
+  const rig       = document.getElementById('rig');
+  const videoSphere = document.getElementById('videoSphere');
+  const videoPanel  = document.getElementById('videoPanel');
+  const imageSky    = document.getElementById('imageSky');
+  const imagePanel  = document.getElementById('imagePanel');
+  const socket = io();
+
+  let sceneStarted=false, pendingData=null, currentMode=null;
+
+  const deviceName = navigator.userAgent.match(/iPhone|iPad/i) ? '📱 iPhone' :
+                     navigator.userAgent.match(/Android/i)     ? '📱 Android' :
+                     navigator.userAgent.match(/Windows/i)     ? '💻 Windows' :
+                     navigator.userAgent.match(/Mac/i)         ? '💻 Mac' : '📟 جهاز';
+
+  socket.emit('autoJoin',{name:deviceName});
+  socket.on('noRoom',()=>setTimeout(()=>socket.emit('autoJoin',{name:deviceName}),3000));
+
+  socket.on('joinOk',(data)=>{
+    if(data&&data.allow){
+      document.getElementById('waitScreen').style.display='none';
+      sceneStarted=true; showModeScreen();
+    } else {
+      document.getElementById('waitScreen').style.display='flex';
+    }
+  });
+
+  // إخفاء الـ cursor على iOS
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isIOS) {
+    const cursor = document.getElementById('mainCursor');
+    if (cursor) cursor.setAttribute('visible', false);
+  }
+  let wakeLock=null;
+  async function requestWakeLock(){try{if('wakeLock' in navigator)wakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')requestWakeLock();});
+  requestWakeLock();
+
+  // Audio
+  const bgAudio=new Audio(); bgAudio.crossOrigin='anonymous';
+  socket.on('audioState',(data)=>{
+    if(!data.url){bgAudio.pause();bgAudio.src='';return;}
+    if(bgAudio.src!==data.url)bgAudio.src=data.url;
+    if(data.playing){
+      const offset=(Date.now()-data.serverTime)/1000;
+      const pos=(data.pausedAt||0)+offset;
+      bgAudio.currentTime=pos>0?pos:0;
+      bgAudio.volume=data.volume!==undefined?data.volume:1;
+      bgAudio.play().catch(()=>{});
+    } else {
+      bgAudio.pause();
+      if(data.pausedAt!==undefined)bgAudio.currentTime=data.pausedAt;
+    }
+  });
+  socket.on('audioVolume',(data)=>{if(data.volume!==undefined)bgAudio.volume=data.volume;});
+
+  socket.on('kicked',()=>{window.location.href='about:blank';});
+
+  function showModeScreen(){
+    scene.style.display='none';
+    document.getElementById('switchBtn').style.display='none';
     document.getElementById('modeScreen').style.display='flex';
     socket.emit('statusUpdate',{status:'اختيار وضع'});
   }
