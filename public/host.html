@@ -573,10 +573,11 @@ function updSeek(s){if(!dragging&&dur>0)document.getElementById('seekSl').value=
 function sendPlay(){
   if(!ml[ci])return;
   const m=ml[ci];
-  const e=(m.type==='image'||m.type==='image360')?'show':'play';
-  socket.emit(e,{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted});
-  playing=true;startedAt=Date.now()-(pausedAt*1000);startTimer();
-  st('▶ '+m.name);document.getElementById('statusPill').textContent='شغّال';
+  const isImg=(m.type==='image'||m.type==='image360');
+  const ev=isImg?'show':'restart';
+  socket.emit(ev,{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted});
+  playing=true; pausedAt=0; startedAt=Date.now();
+  startTimer(); st('▶ '+m.name); document.getElementById('statusPill').textContent='شغّال';
 }
 function sendPause(){if(startedAt)pausedAt=(Date.now()-startedAt)/1000;playing=false;socket.emit('pause');st('⏸ متوقف');document.getElementById('statusPill').textContent='متوقف';}
 function sendRestart(){if(!ml[ci])return;socket.emit('seek',{seconds:0});socket.emit('pause');playing=false;pausedAt=0;startedAt=null;updTimer(0);document.getElementById('seekSl').value=0;st('⏮ رجع للأول');}
