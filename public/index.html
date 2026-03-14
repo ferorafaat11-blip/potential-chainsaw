@@ -307,9 +307,6 @@
 
   function applyState(data){
     hideAll(); setCameraYaw(data.degree||0);
-    var s = (data.size||100)/100;
-    videoPanelWrap.setAttribute('scale', s + ' ' + s + ' ' + s);
-    imagePanelWrap.setAttribute('scale', s + ' ' + s + ' ' + s);
     if(data.type==='video'){
       if(video360.src!==data.url){video360.src=data.url;video360.load();}
       videoSphere.setAttribute('visible',true); applyVolume(video360,data.volume,data.muted);
@@ -337,12 +334,6 @@
     if(!data.url)return; pendingData=data;
     if(sceneStarted&&currentMode)applyState(data);
   }
-
-  socket.on('setSize', function(data) {
-    var s = (data.size || 100) / 100;
-    videoPanelWrap.setAttribute('scale', s + ' ' + s + ' ' + s);
-    imagePanelWrap.setAttribute('scale', s + ' ' + s + ' ' + s);
-  });
 
   socket.on('setVolume',(data)=>{
     [video360,videoFlat].forEach(v=>{v.volume=Math.max(0,Math.min(1,data.volume??1));v.muted=data.muted??false;});
