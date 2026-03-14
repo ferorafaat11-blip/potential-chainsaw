@@ -423,11 +423,6 @@ body::after{
         <span class="vol-val" id="volVal">100%</span>
         <button class="mute-tb" id="muteBtn" onclick="toggleMute()">كتم</button>
       </div>
-      <div class="vol-row">
-        <span class="vol-lbl" style="color:var(--teal)">📐 حجم</span>
-        <input type="range" class="vol-sl" id="liveSize" min="20" max="300" value="100" oninput="sendSize(this.value)" style="accent-color:var(--teal)">
-        <span class="vol-val" id="liveSizeVal" style="color:var(--teal)">100%</span>
-      </div>
     </div>
   </div>
 
@@ -510,15 +505,6 @@ body::after{
           <span class="deg-val" id="degSv">0°</span>
         </div>
       </div>
-      <div class="add-group">
-        <span class="add-lbl">الحجم — <span id="sizeVal" style="color:var(--am2)">100%</span></span>
-        <div class="dir-compact">
-          <input type="range" style="width:110px;accent-color:var(--am);margin:0 4px;" min="20" max="300" value="100" id="sizeSl" oninput="setSize(+this.value)">
-          <button class="dir-btn" onclick="setSize(50)">صغير</button>
-          <button class="dir-btn" onclick="setSize(100)">عادي</button>
-          <button class="dir-btn" onclick="setSize(200)">كبير</button>
-        </div>
-      </div>
       <button class="add-submit" onclick="addMedia()">+ إضافة</button>
     </div>
   </div>
@@ -541,7 +527,7 @@ body::after{
 const socket = io();
 // عرّف نفسك للسيرفر كهوست
 socket.emit('registerHost');
-let ci=0, selType_='video', selDeg=0, selSize=100;
+let ci=0, selType_='video', selDeg=0;
 let playing=false, startedAt=null, pausedAt=0;
 let timer=null, muted=false, vol=100, audioVol=100;
 let dur=0, dragging=false;
@@ -623,13 +609,6 @@ function kickOne(id){socket.emit('kickOne',{id});st('🚪 تم طرد الجها
 // ===== ميديا =====
 function selType(t){selType_=t;['video','videoFlat','image','image360'].forEach(x=>document.getElementById('t_'+x)?.classList.remove('sel'));document.getElementById('t_'+t)?.classList.add('sel');}
 function setDeg(v){selDeg=v;document.getElementById('degSl').value=v;document.getElementById('degVal').textContent=v+'°';document.getElementById('degSv').textContent=v+'°';}
-function setSize(v){selSize=v;document.getElementById('sizeSl').value=v;document.getElementById('sizeVal').textContent=v+'%';}
-function sendSize(v){
-  v=+v;
-  document.getElementById('liveSizeVal').textContent=v+'%';
-  socket.emit('setSize',{size:v});
-  st('📐 الحجم: '+v+'%');
-}
 function cmp(d){if(d<=22||d>=338)return'N';if(d<68)return'NE';if(d<=112)return'E';if(d<158)return'SE';if(d<=202)return'S';if(d<248)return'SW';if(d<=292)return'W';return'NW';}
 function saveML(){try{localStorage.setItem('vr_ml',JSON.stringify(ml));}catch{}}
 function saveAL(){try{localStorage.setItem('vr_al',JSON.stringify(al));}catch{}}
@@ -655,8 +634,6 @@ function renderML(){
         </div>
         <div style="display:flex;align-items:center;gap:5px;">
           <span style="font-size:.6rem;color:var(--teal);font-family:'Oxanium',monospace;">📐</span>
-          <input type="range" style="flex:1;accent-color:var(--teal);" min="20" max="300" value="${m.size||100}" id="ei_size" oninput="document.getElementById('ei_sizev').textContent=this.value+'%'">
-          <span id="ei_sizev" style="font-size:.65rem;color:var(--teal);min-width:32px;font-family:'Oxanium',monospace;">${m.size||100}%</span>
         </div>
         <div style="display:flex;gap:4px;">
           <button class="tac-btn" style="flex:1;" onclick="saveEdit(${i})">حفظ</button>
@@ -679,14 +656,14 @@ function renderML(){
 }
 function startEdit(i){editIdx=i;renderML();document.getElementById('ei_name')?.focus();}
 function saveEdit(i){
-  const n=document.getElementById('ei_name').value.trim(),u=document.getElementById('ei_url').value.trim(),t=document.getElementById('ei_type').value,d=parseInt(document.getElementById('ei_deg').value),sz=parseInt(document.getElementById('ei_size').value||100);
+  const n=document.getElementById('ei_name').value.trim(),u=document.getElementById('ei_url').value.trim(),t=document.getElementById('ei_type').value,d=parseInt(document.getElementById('ei_deg').value);
   if(!n||!u)return alert('الاسم والرابط مطلوبين!');
-  ml[i]={...ml[i],name:n,url:u,type:t,degree:d,size:sz};editIdx=-1;saveML();renderML();st('✅ حُفظ: '+n);
+  ml[i]={...ml[i],name:n,url:u,type:t,degree:d};editIdx=-1;saveML();renderML();st('✅ حُفظ: '+n);
 }
-function addMedia(){const n=document.getElementById('mName').value.trim(),u=document.getElementById('mUrl').value.trim();if(!n||!u)return alert('الاسم والرابط مطلوبين!');ml.push({name:n,type:selType_,url:u,degree:selDeg,size:selSize});document.getElementById('mName').value='';document.getElementById('mUrl').value='';setDeg(0);setSize(100);saveML();renderML();st('✅ أُضيف: '+n);}
+function addMedia(){const n=document.getElementById('mName').value.trim(),u=document.getElementById('mUrl').value.trim();if(!n||!u)return alert('الاسم والرابط مطلوبين!');ml.push({name:n,type:selType_,url:u,degree:selDeg});document.getElementById('mName').value='';document.getElementById('mUrl').value='';setDeg(0);saveML();renderML();st('✅ أُضيف: '+n);}
 function delM(i){ml.splice(i,1);if(ci>=ml.length)ci=Math.max(0,ml.length-1);saveML();renderML();}
 function showM(i){ci=i;const m=ml[i];renderML();pausedAt=0;startedAt=Date.now();playing=true;const e=(m.type==='image'||m.type==='image360')?'show':'restart';socket.emit(e,{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted,size:m.size||100});// sync size slider
-const sz=m.size||100;document.getElementById('liveSize').value=sz;document.getElementById('liveSizeVal').textContent=sz+'%';socket.emit('setSize',{size:sz});startTimer();st('▶ '+m.name);document.getElementById('statusPill').textContent='شغّال';}
+startTimer();st('▶ '+m.name);document.getElementById('statusPill').textContent='شغّال';}
 
 // ===== قائمة الصوت =====
 let al=[];try{const s=localStorage.getItem('vr_al');if(s)al=JSON.parse(s);}catch{}
