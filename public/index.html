@@ -218,23 +218,20 @@
                      navigator.userAgent.match(/Windows/i)     ? '💻 Windows' :
                      navigator.userAgent.match(/Mac/i)         ? '💻 Mac' : '📟 جهاز';
 
-  // حاول تتصل وكرر كل 3 ثواني لحد ما السيرفر يرد
-  var joinDone = false;
+  // كرر autoJoin كل 3 ثواني لحد ما الهوست يفتح الدخول
   var joinInterval = setInterval(function() {
-    if (!joinDone) socket.emit('autoJoin', { name: deviceName });
+    if (!sceneStarted) socket.emit('autoJoin', { name: deviceName });
   }, 3000);
   socket.emit('autoJoin', { name: deviceName });
 
   socket.on('joinOk', function(data) {
-    joinDone = true;
-    clearInterval(joinInterval);
     if (data && data.allow) {
+      clearInterval(joinInterval);
       document.getElementById('waitScreen').style.display = 'none';
       sceneStarted = true;
       showModeScreen();
-    } else {
-      document.getElementById('waitScreen').style.display = 'flex';
     }
+    // لو allow: false فضّل في الانتظار وكرر التسجيل
   });
 
   // إخفاء الـ cursor على iOS
@@ -344,6 +341,7 @@
   socket.on('sync',handleState);
 
   socket.on('sessionStart',()=>{
+    clearInterval(joinInterval);
     sceneStarted = true;
     document.getElementById('waitScreen').style.display='none';
     document.getElementById('modeScreen').style.display='none';
