@@ -527,6 +527,11 @@ body::after{
 const socket = io();
 // عرّف نفسك للسيرفر كهوست
 socket.emit('registerHost');
+
+// لما السيرفر يتصل أو يتصل من جديد، سجّل نفسك كهوست
+socket.on('connect', function() {
+  socket.emit('registerHost');
+});
 let ci=0, selType_='video', selDeg=0;
 let playing=false, startedAt=null, pausedAt=0;
 let timer=null, muted=false, vol=100, audioVol=100;
