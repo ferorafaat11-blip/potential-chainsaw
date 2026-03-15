@@ -2,828 +2,468 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VR Command</title>
-<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700;800&family=Noto+Kufi+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VR Host</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
-:root {
-  --bg:    #080c0e;
-  --p1:    #0e1518;
-  --p2:    #131c20;
-  --p3:    #1a252a;
-  --am:    #e8a030;   /* amber primary */
-  --am2:   #f0c060;   /* amber light */
-  --am3:   rgba(232,160,48,0.12);
-  --am4:   rgba(232,160,48,0.06);
-  --teal:  #2dd4bf;
-  --red:   #ef4444;
-  --grn:   #22c55e;
-  --tx:    #d4e0e8;
-  --mu:    #4a6070;
-  --br:    rgba(232,160,48,0.15);
-  --br2:   rgba(232,160,48,0.08);
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#1a1a2e;color:#eee;direction:rtl}
+.hdr{background:#16213e;padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:2px solid #0f3460}
+.hdr h1{font-size:1rem;color:#e94560;margin-left:auto}
+.chip{background:#0f3460;padding:4px 10px;border-radius:20px;font-size:.75rem}
+.btn{padding:6px 12px;border:none;border-radius:6px;cursor:pointer;font-size:.82rem;font-weight:bold}
+.btn-green{background:#22c55e;color:#000}
+.btn-red{background:#ef4444;color:#fff}
+.btn-blue{background:#3b82f6;color:#fff}
+.btn-yellow{background:#f59e0b;color:#000}
+.btn-gray{background:#4b5563;color:#fff}
+.btn-purple{background:#8b5cf6;color:#fff}
+.btn-teal{background:#14b8a6;color:#000}
+.btn-off{background:#6b7280;color:#fff}
+.main{display:grid;grid-template-columns:1fr 1fr 220px;gap:8px;padding:8px;height:calc(100vh - 52px);overflow:hidden}
+.card{background:#16213e;border:1px solid #0f3460;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.card h3{font-size:.75rem;color:#94a3b8;border-bottom:1px solid #0f3460;padding-bottom:4px;margin-bottom:2px}
+.row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.timer{font-size:1.8rem;font-weight:bold;color:#f59e0b;font-family:monospace;letter-spacing:2px}
+input[type=range]{flex:1;accent-color:#e94560}
+input[type=text]{background:#0f3460;border:1px solid #1e40af;color:#eee;padding:5px 8px;border-radius:5px;font-size:.8rem;width:100%}
+input[type=text]::placeholder{color:#64748b}
+.lbl{font-size:.7rem;color:#94a3b8;white-space:nowrap}
+.val{font-size:.75rem;color:#f59e0b;min-width:35px;text-align:center}
+.list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.list::-webkit-scrollbar{width:3px}
+.list::-webkit-scrollbar-thumb{background:#0f3460}
+.item{background:#0f3460;border-radius:5px;padding:6px 8px;display:flex;align-items:center;gap:6px;cursor:pointer;border:1px solid transparent}
+.item:hover{border-color:#3b82f6}
+.item.active{border-color:#e94560;background:#1e3a5f}
+.item-name{flex:1;font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item-meta{font-size:.62rem;color:#64748b}
+.item-acts{display:flex;gap:3px;flex-shrink:0}
+.ib{padding:2px 6px;border:none;border-radius:4px;cursor:pointer;font-size:.65rem;font-weight:bold}
+.ib-play{background:#22c55e;color:#000}
+.ib-edit{background:#8b5cf6;color:#fff}
+.ib-del{background:#ef4444;color:#fff}
+.badge{padding:1px 6px;border-radius:10px;font-size:.58rem;font-weight:bold}
+.bw{background:#374151;color:#9ca3af}
+.bc{background:#92400e;color:#fbbf24}
+.bn{background:#14532d;color:#22c55e}
+.bv{background:#1e3a5f;color:#60a5fa}
+.vitem{display:flex;align-items:center;gap:5px;padding:5px 6px;border-bottom:1px solid #0f3460}
+.vnum{width:20px;height:20px;background:#0f3460;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#94a3b8;flex-shrink:0}
+.vname{flex:1;font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vkick{padding:1px 6px;background:#7f1d1d;border:none;border-radius:3px;color:#fca5a5;font-size:.6rem;cursor:pointer}
+.add-form{display:flex;flex-direction:column;gap:5px;padding-top:4px;border-top:1px solid #0f3460}
+.trow{display:flex;gap:3px}
+.tbtn{flex:1;padding:4px;border:1px solid #1e40af;background:transparent;color:#94a3b8;border-radius:4px;font-size:.65rem;cursor:pointer}
+.tbtn.sel{background:#1e40af;color:#fff;border-color:#3b82f6}
+.sbar{background:#0f3460;padding:5px 10px;font-size:.7rem;color:#94a3b8;border-radius:4px}
+.edit-box{background:#0a1628;border:1px solid #3b82f6;border-radius:5px;padding:6px;display:flex;flex-direction:column;gap:4px}
+.col1{grid-column:1;display:flex;flex-direction:column;gap:8px}
+.col2{grid-column:2;display:flex;flex-direction:column;gap:8px}
+.col3{grid-column:3;grid-row:1/6;display:flex;flex-direction:column;gap:8px}
+@media(max-width:700px){
+  .main{grid-template-columns:1fr;height:auto;overflow:visible}
+  body{overflow-y:auto}
+  .col3{grid-column:1;grid-row:auto}
 }
-*{margin:0;padding:0;box-sizing:border-box;}
-html,body{height:100%;}
-body{
-  background:var(--bg);
-  color:var(--tx);
-  font-family:'Noto Kufi Arabic',sans-serif;
-  display:flex; flex-direction:column;
-  overflow:hidden; min-height:100vh;
-}
-
-/* scan-line texture */
-body::before{
-  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
-}
-body::after{
-  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
-  background:
-    radial-gradient(ellipse 70% 50% at 20% 10%, rgba(232,160,48,0.04) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 70% at 85% 90%, rgba(45,212,191,0.03) 0%, transparent 60%);
-}
-
-/* ───── HEADER ───── */
-.hdr{
-  position:relative; z-index:20;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:8px 20px; gap:12px; flex-wrap:wrap;
-  border-bottom:1px solid var(--br);
-  background:linear-gradient(180deg, rgba(14,21,24,0.98) 0%, rgba(8,12,14,0.95) 100%);
-  backdrop-filter:blur(20px);
-  flex-shrink:0;
-}
-.hdr::after{content:''; position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--am),transparent);}
-
-.logo{
-  font-family:'Oxanium',monospace; font-size:1rem; font-weight:800;
-  color:var(--am); letter-spacing:4px; text-transform:uppercase;
-  display:flex; align-items:center; gap:8px;
-}
-.logo-icon{font-size:1.3rem;}
-.logo-sub{font-size:.6rem; color:var(--mu); letter-spacing:6px; display:block; margin-top:-2px;}
-
-.hdr-center{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
-
-.stat-chip{
-  display:flex; align-items:center; gap:5px;
-  padding:4px 10px; border-radius:3px;
-  background:var(--p2); border:1px solid var(--br);
-  font-family:'Oxanium',monospace; font-size:.72rem; color:var(--mu);
-  position:relative; overflow:hidden;
-}
-.stat-chip::before{content:''; position:absolute; top:0; left:0; width:2px; height:100%; background:var(--am);}
-.stat-val{color:var(--am2); font-weight:700;}
-
-.pulse-dot{width:7px; height:7px; border-radius:50%; background:var(--grn); box-shadow:0 0 8px var(--grn); animation:pdot 1.8s infinite;}
-@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
-
-.hdr-btns{display:flex; gap:6px; flex-wrap:wrap;}
-
-.cmd-btn{
-  padding:6px 14px; border-radius:3px; border:1px solid;
-  font-family:'Oxanium',monospace; font-size:.72rem; font-weight:700;
-  cursor:pointer; letter-spacing:1px; text-transform:uppercase;
-  transition:all .15s; position:relative; overflow:hidden;
-}
-.cmd-btn::after{content:''; position:absolute; inset:0; background:currentColor; opacity:0; transition:opacity .15s;}
-.cmd-btn:hover::after{opacity:.08;}
-.cmd-btn:active{transform:scale(.96);}
-.cb-join{border-color:var(--mu); background:transparent; color:var(--mu);}
-.cb-join.on{border-color:var(--grn); background:rgba(34,197,94,.12); color:var(--grn);}
-.cb-kick{border-color:rgba(239,68,68,.4); background:rgba(239,68,68,.08); color:var(--red);}
-
-/* ───── LAYOUT ───── */
-.main{
-  position:relative; z-index:5;
-  display:grid;
-  grid-template-columns:1fr 1fr 280px;
-  grid-template-rows:auto auto 1fr 1fr auto;
-  gap:8px; padding:8px;
-  flex:1; overflow:auto; min-height:0;
-}
-
-/* ───── PANEL BASE ───── */
-.panel{
-  background:var(--p1);
-  border:1px solid var(--br2);
-  border-radius:4px;
-  display:flex; flex-direction:column;
-  overflow:hidden; position:relative;
-}
-.panel::before{content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg, var(--am) 0%, transparent 100%); opacity:.6;}
-.panel-hdr{
-  padding:7px 12px; border-bottom:1px solid var(--br2);
-  font-family:'Oxanium',monospace; font-size:.62rem;
-  letter-spacing:3px; color:var(--am); text-transform:uppercase;
-  display:flex; align-items:center; justify-content:space-between;
-  flex-shrink:0;
-}
-.panel-hdr-icon{opacity:.5; font-size:.8rem;}
-
-/* ───── TIMER ───── */
-.timer-panel{grid-column:1; grid-row:1;}
-.timer-inner{padding:10px 14px; display:flex; align-items:center; gap:14px;}
-.timer-display{
-  font-family:'Oxanium',monospace; font-size:2rem; font-weight:800;
-  color:var(--am2); text-shadow:0 0 30px rgba(232,160,48,.5);
-  letter-spacing:4px; min-width:145px;
-}
-.seek-col{flex:1; display:flex; flex-direction:column; gap:6px;}
-.seek-row{display:flex; align-items:center; gap:6px;}
-.seek-lbl{font-family:'Oxanium',monospace; font-size:.58rem; color:var(--mu); min-width:32px;}
-.seek-sl{flex:1; height:3px; cursor:pointer; border-radius:2px; accent-color:var(--am);}
-.manual-row{display:flex; gap:5px;}
-.tac-input{
-  flex:1; padding:5px 8px;
-  background:var(--p3); border:1px solid var(--br);
-  border-radius:3px; color:var(--tx); font-size:.75rem;
-  direction:ltr; text-align:center; font-family:'Oxanium',monospace;
-}
-.tac-input:focus{outline:none; border-color:var(--am);}
-.tac-input::placeholder{color:var(--mu);}
-.tac-input.rtl{direction:rtl; font-family:'Noto Kufi Arabic',sans-serif;}
-.tac-btn{
-  padding:5px 10px; background:var(--am3); border:1px solid var(--br);
-  border-radius:3px; color:var(--am2); font-size:.72rem; font-weight:700;
-  cursor:pointer; font-family:'Oxanium',monospace; transition:all .15s;
-}
-.tac-btn:hover{background:rgba(232,160,48,.2);}
-.tac-btn:active{transform:scale(.95);}
-.tac-btn.danger{background:rgba(239,68,68,.1); border-color:rgba(239,68,68,.3); color:var(--red);}
-.tac-btn.purple{background:rgba(139,92,246,.15); border-color:rgba(139,92,246,.3); color:#a78bfa;}
-.tac-btn.teal{background:rgba(45,212,191,.1); border-color:rgba(45,212,191,.3); color:var(--teal);}
-
-/* ───── TRANSPORT ───── */
-.transport-panel{grid-column:2; grid-row:1;}
-.transport-inner{padding:10px 12px; display:flex; flex-direction:column; gap:8px;}
-.t-row{display:flex; gap:6px;}
-.t-btn{
-  flex:1; padding:9px 5px; border-radius:3px; border:1px solid;
-  font-family:'Noto Kufi Arabic',sans-serif; font-size:.82rem; font-weight:700;
-  cursor:pointer; transition:all .15s; text-align:center;
-}
-.t-btn:active{transform:scale(.95);}
-.t-play{background:rgba(232,160,48,.15); border-color:var(--am); color:var(--am2);}
-.t-play:hover{background:rgba(232,160,48,.25);}
-.t-pause{background:rgba(239,68,68,.1); border-color:rgba(239,68,68,.4); color:var(--red);}
-.t-pause:hover{background:rgba(239,68,68,.2);}
-.t-restart{background:rgba(45,212,191,.08); border-color:rgba(45,212,191,.3); color:var(--teal);}
-.t-restart:hover{background:rgba(45,212,191,.15);}
-.t-sync{background:rgba(139,92,246,.1); border-color:rgba(139,92,246,.35); color:#a78bfa;}
-.t-sync:hover{background:rgba(139,92,246,.2);}
-.t-sync.flash{animation:syncfl .4s;}
-@keyframes syncfl{0%,100%{opacity:1}50%{opacity:.15}}
-
-.vol-row{display:flex; align-items:center; gap:8px; padding:4px 0;}
-.vol-lbl{font-size:.65rem; color:var(--mu); font-family:'Oxanium',monospace; letter-spacing:1px; min-width:26px;}
-.vol-sl{flex:1; accent-color:var(--am); cursor:pointer; height:3px;}
-.vol-val{font-family:'Oxanium',monospace; font-size:.65rem; color:var(--am2); min-width:32px; text-align:center;}
-.mute-tb{padding:3px 8px; border-radius:3px; border:1px solid rgba(239,68,68,.3); background:rgba(239,68,68,.08); color:var(--red); font-size:.65rem; font-weight:700; cursor:pointer; font-family:'Oxanium',monospace;}
-.mute-tb.on{background:var(--red); color:#fff;}
-
-/* ───── AUDIO PANEL ───── */
-.audio-panel{grid-column:1/3; grid-row:2;}
-.audio-inner{padding:10px 14px; display:flex; flex-direction:column; gap:7px;}
-.audio-top{display:flex; align-items:center; gap:14px;}
-.audio-timer{font-family:'Oxanium',monospace; font-size:1.1rem; font-weight:700; color:#a78bfa; letter-spacing:3px; text-shadow:0 0 15px rgba(139,92,246,.4);}
-.audio-url-row{display:flex; gap:5px;}
-.a-row{display:flex; gap:5px; align-items:center;}
-.a-btn{
-  padding:5px 9px; border-radius:3px; border:1px solid;
-  font-family:'Oxanium',monospace; font-size:.7rem; font-weight:700;
-  cursor:pointer; transition:all .15s;
-}
-.a-btn:active{transform:scale(.95);}
-.a-pl{background:rgba(139,92,246,.15); border-color:rgba(139,92,246,.4); color:#a78bfa;}
-.a-pa{background:var(--p3); border-color:var(--br); color:var(--mu);}
-.a-re{background:rgba(45,212,191,.08); border-color:rgba(45,212,191,.3); color:var(--teal);}
-.a-sy{background:rgba(232,160,48,.1); border-color:var(--br); color:var(--am);}
-.a-st{background:rgba(239,68,68,.08); border-color:rgba(239,68,68,.3); color:var(--red);}
-.amute{padding:3px 8px; border-radius:3px; border:1px solid rgba(139,92,246,.3); background:rgba(139,92,246,.08); color:#a78bfa; font-size:.65rem; font-weight:700; cursor:pointer; font-family:'Oxanium',monospace;}
-.amute.on{background:#7c3aed; color:#fff;}
-
-/* ───── LISTS ───── */
-.scroll-area{flex:1; overflow-y:auto; padding:4px;}
-.scroll-area::-webkit-scrollbar{width:2px;}
-.scroll-area::-webkit-scrollbar-thumb{background:var(--br); border-radius:2px;}
-
-.list-item{
-  display:flex; align-items:center; gap:7px;
-  padding:7px 10px; border-radius:3px; border:1px solid transparent;
-  margin-bottom:2px; transition:all .15s; cursor:pointer;
-}
-.list-item:hover{background:var(--p2); border-color:var(--br2);}
-.list-item.active{background:rgba(232,160,48,.06); border-color:var(--br);}
-.li-icon{font-size:.9rem; flex-shrink:0; opacity:.7;}
-.li-info{flex:1; min-width:0;}
-.li-name{font-size:.78rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--tx);}
-.li-meta{font-size:.58rem; color:var(--mu); margin-top:1px; display:flex; gap:6px; font-family:'Oxanium',monospace;}
-.li-acts{display:flex; gap:3px; flex-shrink:0;}
-.li-play{padding:3px 8px; background:var(--am3); border:1px solid var(--br); border-radius:3px; color:var(--am2); font-size:.65rem; font-weight:700; cursor:pointer; font-family:'Oxanium',monospace;}
-.li-edit{padding:3px 7px; background:rgba(139,92,246,.12); border:1px solid rgba(139,92,246,.3); border-radius:3px; color:#a78bfa; font-size:.65rem; cursor:pointer;}
-.li-del{padding:3px 7px; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.2); border-radius:3px; color:var(--red); font-size:.65rem; cursor:pointer;}
-.li-empty{color:var(--mu); font-size:.75rem; text-align:center; padding:18px; font-family:'Oxanium',monospace; letter-spacing:1px;}
-
-.list-footer{padding:7px 10px; border-top:1px solid var(--br2); display:flex; gap:5px; flex-shrink:0;}
-
-/* media list */
-.media-panel{grid-column:1; grid-row:3/5;}
-/* audio list */
-.audio-list-panel{grid-column:2; grid-row:3/5;}
-
-/* ───── ADD PANEL ───── */
-.add-panel{grid-column:1/3; grid-row:5;}
-.add-inner{padding:10px 14px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;}
-.add-group{display:flex; flex-direction:column; gap:4px;}
-.add-lbl{font-family:'Oxanium',monospace; font-size:.58rem; letter-spacing:2px; color:var(--mu); text-transform:uppercase;}
-.type-row{display:flex; gap:3px;}
-.ty-btn{padding:5px 8px; border-radius:3px; border:1px solid var(--br2); background:transparent; color:var(--mu); font-size:.65rem; cursor:pointer; font-family:'Noto Kufi Arabic',sans-serif; transition:all .12s;}
-.ty-btn.sel{border-color:var(--am); color:var(--am2); background:var(--am3);}
-.dir-compact{display:flex; gap:3px; align-items:center;}
-.dir-btn{padding:4px 6px; border-radius:3px; border:1px solid var(--br2); background:transparent; color:var(--mu); font-size:.6rem; cursor:pointer; transition:all .12s;}
-.dir-btn:hover{border-color:var(--am); color:var(--am);}
-.add-input{
-  padding:6px 9px; background:var(--p3); border:1px solid var(--br);
-  border-radius:3px; color:var(--tx); font-size:.78rem;
-  font-family:'Noto Kufi Arabic',sans-serif; direction:rtl;
-}
-.add-input.ltr{direction:ltr; font-family:'Oxanium',monospace; font-size:.72rem;}
-.add-input:focus{outline:none; border-color:var(--am);}
-.add-input::placeholder{color:var(--mu);}
-.add-submit{
-  padding:7px 16px; background:var(--am3); border:1px solid var(--am);
-  border-radius:3px; color:var(--am2); font-size:.78rem; font-weight:700;
-  cursor:pointer; font-family:'Oxanium',monospace; letter-spacing:1px;
-  transition:all .15s; white-space:nowrap;
-}
-.add-submit:hover{background:rgba(232,160,48,.22);}
-.deg-val{font-family:'Oxanium',monospace; font-size:.65rem; color:var(--am2); min-width:28px;}
-
-/* ───── VIEWERS ───── */
-.viewers-panel{grid-column:3; grid-row:1/5;}
-.v-item{display:flex; align-items:center; gap:7px; padding:6px 10px; border-bottom:1px solid var(--br2);}
-.v-num{
-  width:22px; height:22px; border-radius:2px;
-  background:var(--p3); border:1px solid var(--br);
-  display:flex; align-items:center; justify-content:center;
-  font-family:'Oxanium',monospace; font-size:.6rem; color:var(--mu); flex-shrink:0;
-}
-.v-info{flex:1; min-width:0;}
-.v-name{font-size:.72rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--tx);}
-.v-badge{
-  display:inline-block; padding:1px 6px; border-radius:2px;
-  font-family:'Oxanium',monospace; font-size:.56rem; font-weight:700; letter-spacing:1px;
-  margin-top:1px;
-}
-.vb-w{background:rgba(74,96,112,.2); color:var(--mu); border:1px solid rgba(74,96,112,.3);}
-.vb-c{background:rgba(245,158,11,.12); color:#fbbf24; border:1px solid rgba(245,158,11,.3);}
-.vb-n{background:rgba(34,197,94,.12); color:var(--grn); border:1px solid rgba(34,197,94,.3);}
-.vb-v{background:rgba(45,212,191,.1); color:var(--teal); border:1px solid rgba(45,212,191,.3);}
-.v-kick{
-  padding:2px 6px; border-radius:2px;
-  border:1px solid rgba(239,68,68,.25); background:rgba(239,68,68,.07);
-  color:var(--red); font-size:.6rem; cursor:pointer;
-  font-family:'Oxanium',monospace; flex-shrink:0;
-}
-
-/* ───── STATUS ───── */
-.status-bar{
-  grid-column:3; grid-row:5;
-  background:var(--p1); border:1px solid var(--br2); border-radius:3px;
-  padding:6px 10px; display:flex; align-items:center; gap:6px;
-  font-family:'Oxanium',monospace; font-size:.62rem; color:var(--mu); letter-spacing:.5px;
-}
-
-/* ───── MOBILE ───── */
-@media(max-width:768px){
-  body{overflow-y:auto; overflow-x:hidden;}
-
-  .hdr{padding:6px 10px; gap:6px;}
-  .logo{font-size:.8rem;}
-  .logo-sub{display:none;}
-  .hdr-center{gap:5px;}
-  .stat-chip{padding:3px 7px; font-size:.65rem;}
-  .cmd-btn{padding:5px 10px; font-size:.65rem;}
-
-  .main{
-    display:flex; flex-direction:column;
-    gap:6px; padding:6px;
-    overflow:visible; min-height:0; height:auto;
-  }
-
-  /* كل البانلات تاخد العرض كامل */
-  .timer-panel,
-  .transport-panel,
-  .audio-panel,
-  .media-panel,
-  .audio-list-panel,
-  .add-panel,
-  .viewers-panel,
-  .status-bar{
-    grid-column:unset; grid-row:unset;
-    width:100%;
-  }
-
-  /* ارتفاعات ثابتة للقوائم */
-  .media-panel{ min-height:200px; max-height:280px; }
-  .audio-list-panel{ min-height:160px; max-height:220px; }
-  .viewers-panel{ min-height:150px; max-height:220px; }
-
-  .timer-display{font-size:1.4rem; min-width:100px; letter-spacing:2px;}
-  .timer-inner{padding:8px 10px; gap:8px;}
-
-  /* transport أزرار */
-  .t-btn{padding:8px 4px; font-size:.75rem;}
-  .transport-inner{padding:8px 10px;}
-
-  /* audio */
-  .audio-inner{padding:8px 10px;}
-  .audio-timer{font-size:.9rem; letter-spacing:2px;}
-  .a-btn{padding:4px 7px; font-size:.65rem;}
-
-  /* add panel */
-  .add-inner{flex-direction:column; gap:8px; padding:8px 10px;}
-  .add-group{width:100%;}
-  .add-input{width:100%;}
-  .add-input.ltr{width:100%;}
-  .type-row{flex-wrap:wrap;}
-  .dir-compact{flex-wrap:wrap;}
-
-  .status-bar{font-size:.6rem; padding:5px 8px;}
-}
-
-/* edit form inline */
-.edit-form{flex-direction:column;align-items:stretch;gap:6px;border-color:var(--am) !important;background:var(--p2);}
-.edit-form .tac-input{width:100%;}
 </style>
 </head>
 <body>
-
-<!-- HEADER -->
 <div class="hdr">
-  <div class="logo">
-    <span class="logo-icon">◈</span>
-    <div>مركز التحكم VR
-      <span class="logo-sub">لوحة التحكم</span>
-    </div>
-  </div>
-  <div class="hdr-center">
-    <div class="stat-chip"><div class="pulse-dot"></div>الأجهزة&nbsp;<span class="stat-val" id="vCount">0</span></div>
-    <div class="stat-chip">الحالة&nbsp;<span class="stat-val" id="statusPill">متوقف</span></div>
-  </div>
-  <div class="hdr-btns">
-    <button class="cmd-btn cb-join" id="joinToggle" onclick="toggleJoin()">⛔ مغلق</button>
-    <button class="cmd-btn cb-kick" onclick="kickAll()">🚪 أخرج الكل</button>
-  </div>
+  <h1>🥽 VR مركز التحكم</h1>
+  <div class="chip">الأجهزة: <span id="vCount">0</span></div>
+  <div class="chip">الحالة: <span id="statusPill">متوقف</span></div>
+  <button class="btn btn-off" id="joinBtn" onclick="toggleJoin()">⛔ مغلق</button>
+  <button class="btn btn-red" onclick="kickAll()">🚪 أخرج الكل</button>
 </div>
 
 <div class="main">
 
-  <!-- TIMER -->
-  <div class="panel timer-panel">
-    <div class="panel-hdr">⏱ توقيت الفيديو <span class="panel-hdr-icon">◈</span></div>
-    <div class="timer-inner">
-      <div class="timer-display" id="timerDisp">00:00:00</div>
-      <div class="seek-col">
-        <div class="seek-row">
-          <span class="seek-lbl">00:00</span>
-          <input type="range" class="seek-sl" id="seekSl" min="0" max="100" value="0"
-            oninput="seekMove(this.value)" onchange="seekDrop(this.value)">
-          <span class="seek-lbl" id="seekEnd">00:00</span>
-        </div>
-        <div class="manual-row">
-          <input class="tac-input" id="seekIn" placeholder="1:30 أو 90" />
-          <button class="tac-btn" onclick="seekManual()">انتقال</button>
-        </div>
+  <!-- كول 1: توقيت + تحكم -->
+  <div class="col1">
+    <div class="card">
+      <h3>⏱ توقيت الفيديو</h3>
+      <div class="timer" id="timerDisp">00:00:00</div>
+      <div class="row">
+        <span class="lbl" id="seekStart">00:00</span>
+        <input type="range" id="seekSl" min="0" max="100" value="0" oninput="seekMove(this.value)" onchange="seekDrop(this.value)">
+        <span class="lbl" id="seekEnd">00:00</span>
+      </div>
+      <div class="row">
+        <input type="text" id="seekIn" placeholder="مثال: 1:30 أو 90 ثانية" style="flex:1">
+        <button class="btn btn-blue" onclick="seekManual()">⏩ انتقال</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>◈ تحكم</h3>
+      <div class="row">
+        <button class="btn btn-green" onclick="sendPlay()">▶ شغّل</button>
+        <button class="btn btn-red" onclick="sendPause()">⏸ وقّف</button>
+        <button class="btn btn-gray" onclick="sendReset()">⏮ أول</button>
+        <button class="btn btn-yellow" onclick="sendSync()">⚡ Sync</button>
+      </div>
+      <div class="row">
+        <button class="btn btn-teal" id="plBtn" onclick="togglePL()">▶▶ البلاي ليست</button>
+        <button class="btn btn-gray" onclick="plNext()">⏭ التالي</button>
+      </div>
+      <div class="row">
+        <span class="lbl">🎬 صوت</span>
+        <input type="range" id="volSl" min="0" max="100" value="100" oninput="setVol(this.value)">
+        <span class="val" id="volVal">100%</span>
+        <button class="btn btn-gray" id="muteBtn" onclick="toggleMute()" style="padding:4px 8px">🔇</button>
       </div>
     </div>
   </div>
 
-  <!-- TRANSPORT -->
-  <div class="panel transport-panel">
-    <div class="panel-hdr">◈ تحكم <span class="panel-hdr-icon">▶</span></div>
-    <div class="transport-inner">
-      <div class="t-row">
-        <button class="t-btn t-play"    onclick="sendPlay()">▶ شغّل</button>
-        <button class="t-btn t-pause"   onclick="sendPause()">⏸ وقّف</button>
-        <button class="t-btn t-restart" onclick="sendRestart()">⏮ أول</button>
-        <button class="t-btn t-sync" id="syncBtn" onclick="sendSync()">⚡ Sync</button>
+  <!-- كول 2: صوت + قوائم -->
+  <div class="col2">
+    <div class="card">
+      <h3>🎵 مسار الصوت</h3>
+      <div class="timer" id="audioTimer" style="font-size:1.1rem;color:#8b5cf6">00:00:00</div>
+      <div class="row">
+        <span class="lbl">00:00</span>
+        <input type="range" id="aSeekSl" min="0" max="100" value="0" oninput="aSeekMove(this.value)" onchange="aSeekDrop(this.value)">
+        <span class="lbl" id="aSeekEnd">00:00</span>
       </div>
-      <div class="t-row">
-        <button class="t-btn" id="plBtn" onclick="togglePlaylist()" style="background:rgba(45,212,191,.1);border-color:rgba(45,212,191,.4);color:var(--teal);flex:2;">▶▶ تشغيل البلاي ليست</button>
-        <button class="t-btn" onclick="plNext()" style="background:rgba(45,212,191,.06);border-color:rgba(45,212,191,.2);color:var(--teal);flex:1;">⏭ التالي</button>
-      </div>
-      <div class="vol-row">
-        <span class="vol-lbl">🎬 صوت</span>
-        <input type="range" class="vol-sl" id="volSl" min="0" max="100" value="100" oninput="setVolume(this.value)">
-        <span class="vol-val" id="volVal">100%</span>
-        <button class="mute-tb" id="muteBtn" onclick="toggleMute()">كتم</button>
+      <input type="text" id="audioUrl" placeholder="رابط الصوت mp3...">
+      <div class="row">
+        <button class="btn btn-purple" onclick="aPlay()">▶</button>
+        <button class="btn btn-gray" onclick="aPause()">⏸</button>
+        <button class="btn btn-gray" onclick="aRestart()">🔄</button>
+        <button class="btn btn-yellow" onclick="aSync()">⚡</button>
+        <button class="btn btn-red" onclick="aStop()">⏹</button>
+        <span class="lbl">🔊</span>
+        <input type="range" id="aVolSl" min="0" max="100" value="100" oninput="setAVol(this.value)" style="max-width:80px">
+        <span class="val" id="aVolVal">100%</span>
+        <button class="btn btn-gray" id="aMuteBtn" onclick="toggleAMute()" style="padding:4px 8px">🔇</button>
       </div>
     </div>
-  </div>
 
-  <!-- AUDIO -->
-  <div class="panel audio-panel">
-    <div class="panel-hdr">🎵 مسار الصوت <span class="panel-hdr-icon">◈</span></div>
-    <div class="audio-inner">
-      <div class="audio-top">
-        <div class="audio-timer" id="audioTimerDisp">00:00:00</div>
-        <div class="seek-row" style="flex:1;">
-          <span class="seek-lbl" style="font-size:.55rem;">00:00</span>
-          <input type="range" class="seek-sl" id="audioSeekSl" min="0" max="100" value="0"
-            oninput="audioSeekMove(this.value)" onchange="audioSeekDrop(this.value)">
-          <span class="seek-lbl" id="audioSeekEnd" style="font-size:.55rem;">00:00</span>
+    <div class="card" style="flex:1">
+      <h3>📁 قائمة المحتوى</h3>
+      <div class="list" id="mediaList"></div>
+      <div class="add-form">
+        <div class="trow">
+          <button class="tbtn sel" id="t_video" onclick="setType('video')">🌐 360°</button>
+          <button class="tbtn" id="t_videoFlat" onclick="setType('videoFlat')">🎬 عادي</button>
+          <button class="tbtn" id="t_image" onclick="setType('image')">🖼 صورة</button>
+          <button class="tbtn" id="t_image360" onclick="setType('image360')">🌐 ص360</button>
         </div>
-      </div>
-      <div class="audio-url-row">
-        <input class="tac-input ltr" id="audioUrl" placeholder="audio url / mp3..." style="flex:1;"/>
-      </div>
-      <div class="a-row">
-        <button class="a-btn a-pl" onclick="playAudio()">▶ شغّل</button>
-        <button class="a-btn a-pa" onclick="pauseAudio()">⏸ وقّف</button>
-        <button class="a-btn a-re" onclick="restartAudio()">🔄 أول</button>
-        <button class="a-btn a-sy" onclick="syncAudio()">⚡</button>
-        <button class="a-btn a-st" onclick="stopAudio()">⏹ قف</button>
-        <div style="flex:1;"></div>
-        <input type="range" class="vol-sl" id="audioVolSl" min="0" max="100" value="100" oninput="setAudioVol(this.value)" style="max-width:90px;">
-        <span class="vol-val" id="audioVolVal">100%</span>
-        <button class="amute" id="audioMuteBtn" onclick="toggleAudioMute()">كتم</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MEDIA LIST -->
-  <div class="panel media-panel">
-    <div class="panel-hdr">📁 قائمة المحتوى <span class="panel-hdr-icon">◈</span></div>
-    <div class="scroll-area" id="mediaList"></div>
-  </div>
-
-  <!-- AUDIO LIST -->
-  <div class="panel audio-list-panel">
-    <div class="panel-hdr">🎵 قائمة الأصوات <span class="panel-hdr-icon">◈</span></div>
-    <div class="scroll-area" id="audioList"></div>
-    <div class="list-footer">
-      <input class="tac-input rtl" id="aName" placeholder="الاسم" style="flex:1;"/>
-      <input class="tac-input ltr" id="aUrlIn" placeholder="mp3 url..." style="flex:2;"/>
-      <button class="tac-btn teal" onclick="addAudio()">+ إضافة</button>
-    </div>
-  </div>
-
-  <!-- ADD PANEL -->
-  <div class="panel add-panel">
-    <div class="panel-hdr">+ إضافة محتوى <span class="panel-hdr-icon">◈</span></div>
-    <div class="add-inner">
-      <div class="add-group">
-        <span class="add-lbl">النوع</span>
-        <div class="type-row">
-          <button class="ty-btn sel" id="t_video"     onclick="selType('video')">🌐 360°</button>
-          <button class="ty-btn"     id="t_videoFlat" onclick="selType('videoFlat')">🎬 عادي</button>
-          <button class="ty-btn"     id="t_image"     onclick="selType('image')">🖼️ صورة</button>
-          <button class="ty-btn"     id="t_image360"  onclick="selType('image360')">🌐 ص360</button>
+        <input type="text" id="mName" placeholder="الاسم">
+        <input type="text" id="mUrl" placeholder="الرابط https://...">
+        <div class="row">
+          <span class="lbl">🧭 <span id="degVal">0°</span></span>
+          <input type="range" id="degSl" min="0" max="359" value="0" oninput="setDeg(this.value)" style="flex:1">
+          <button class="ib ib-play" onclick="setDeg(0)">ش</button>
+          <button class="ib ib-play" onclick="setDeg(90)">ش</button>
+          <button class="ib ib-play" onclick="setDeg(180)">ج</button>
+          <button class="ib ib-play" onclick="setDeg(270)">غ</button>
         </div>
+        <button class="btn btn-green" onclick="addMedia()">➕ إضافة</button>
       </div>
-      <div class="add-group">
-        <span class="add-lbl">الاسم</span>
-        <input class="add-input" id="mName" placeholder="اسم المحتوى" style="width:130px;"/>
+    </div>
+
+    <div class="card" style="max-height:200px">
+      <h3>🎵 قائمة الأصوات</h3>
+      <div class="list" id="audioList"></div>
+      <div class="row" style="padding-top:4px;border-top:1px solid #0f3460">
+        <input type="text" id="aName" placeholder="الاسم" style="flex:1">
+        <input type="text" id="aUrl" placeholder="mp3 رابط" style="flex:2">
+        <button class="btn btn-purple" onclick="addAudio()">➕</button>
       </div>
-      <div class="add-group" style="flex:1;">
-        <span class="add-lbl">الرابط</span>
-        <input class="add-input ltr" id="mUrl" placeholder="https://..." style="width:100%;min-width:160px;"/>
-      </div>
-      <div class="add-group">
-        <span class="add-lbl">الاتجاه — <span id="degVal" style="color:var(--am2)">0°</span></span>
-        <div class="dir-compact">
-          <button class="dir-btn" onclick="setDeg(0)">ش</button>
-          <button class="dir-btn" onclick="setDeg(90)">ش</button>
-          <button class="dir-btn" onclick="setDeg(180)">ج</button>
-          <button class="dir-btn" onclick="setDeg(270)">غ</button>
-          <input type="range" style="width:70px;accent-color:var(--am);margin:0 4px;" min="0" max="359" value="0" id="degSl" oninput="setDeg(+this.value)">
-          <span class="deg-val" id="degSv">0°</span>
-        </div>
-      </div>
-      <button class="add-submit" onclick="addMedia()">+ إضافة</button>
     </div>
   </div>
 
-  <!-- VIEWERS -->
-  <div class="panel viewers-panel">
-    <div class="panel-hdr">◉ الأجهزة <span class="panel-hdr-icon">◈</span></div>
-    <div class="scroll-area" id="viewerList"></div>
-  </div>
-
-  <!-- STATUS -->
-  <div class="status-bar">
-    <div class="pulse-dot" style="width:5px;height:5px;"></div>
-    <span id="statusBox">متصل ✓</span>
+  <!-- كول 3: أجهزة -->
+  <div class="col3">
+    <div class="card" style="flex:1">
+      <h3>👥 الأجهزة المتصلة</h3>
+      <div class="list" id="viewerList"></div>
+    </div>
+    <div class="sbar" id="statusBox">جاهز</div>
   </div>
 
 </div>
 
 <script>
 const socket = io();
-// عرّف نفسك للسيرفر كهوست
-socket.emit('registerHost');
-
-// لما السيرفر يتصل أو يتصل من جديد، سجّل نفسك كهوست
-socket.on('connect', function() {
-  socket.emit('registerHost');
-  st('✅ متصل: ' + socket.id.slice(0,6));
-});
-socket.on('disconnect', function() { st('❌ انقطع الاتصال'); });
-socket.on('connect_error', function(e) { st('❌ خطأ: ' + e.message); });
-socket.on('joinToggleOk', function(data) {
-  var joinAllowed2 = data.allow;
-  var btn = document.getElementById('joinToggle');
-  if (joinAllowed2) {
-    btn.textContent = '✅ مفتوح';
-    btn.classList.add('on');
-    st('✅ مفتوح — الأجهزة على شاشة الاختيار');
-  } else {
-    btn.textContent = '⛔ مغلق';
-    btn.classList.remove('on');
-    st('⛔ مغلق — الأجهزة في الانتظار');
-  }
-  joinAllowed = joinAllowed2;
-});
-let ci=0, selType_='video', selDeg=0;
-let playing=false, startedAt=null, pausedAt=0;
-let timer=null, muted=false, vol=100, audioVol=100;
-let dur=0, dragging=false;
-
-const TI={video:'🌐',videoFlat:'🎬',image:'🖼️',image360:'🌐'};
-const TL={video:'فيديو 360°',videoFlat:'فيديو عادي',image:'صورة عادية',image360:'صورة 360°'};
-
-const DEFAULT_ML=[{name:'جولة المعبد',type:'video',degree:0,url:'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4'}];
-let ml=[];try{const s=localStorage.getItem('vr_ml');ml=s?JSON.parse(s):DEFAULT_ML;}catch{ml=DEFAULT_ML;}
-
-// ===== صوت الفيديو =====
-function setVolume(v){vol=+v;document.getElementById('volVal').textContent=v+'%';if(v>0)muted=false;updMute();socket.emit('setVolume',{volume:v/100,muted});}
-function toggleMute(){muted=!muted;updMute();socket.emit('setVolume',{volume:vol/100,muted});}
-function updMute(){const b=document.getElementById('muteBtn');b.textContent=muted?'رفع الكتم':'كتم';b.classList.toggle('on',muted);}
-
-// ===== صوت منفصل =====
-let audioPlaying=false,audioStartedAt=null,audioPausedAt=0,audioDur=0,audioDragging=false,audioMuted=false;
-let audioTimer=null;
-function playAudio(){const u=document.getElementById('audioUrl').value.trim();if(!u)return st('ضع رابط الصوت!');socket.emit('playAudio',{url:u,volume:audioVol/100,muted:audioMuted});audioPlaying=true;audioStartedAt=Date.now()-(audioPausedAt*1000);startAudioTimer();st('🎵 شغّل');}
-function pauseAudio(){if(audioStartedAt)audioPausedAt=(Date.now()-audioStartedAt)/1000;audioPlaying=false;socket.emit('pauseAudio');st('🎵 وقّف');}
-function restartAudio(){const u=document.getElementById('audioUrl').value.trim();if(!u)return st('ضع رابط الصوت!');socket.emit('restartAudio',{url:u,volume:audioVol/100,muted:audioMuted});audioPlaying=true;audioPausedAt=0;audioStartedAt=Date.now();startAudioTimer();st('🎵 من الأول');}
-function syncAudio(){socket.emit('syncAll');st('⚡ مزامنة');}
-function stopAudio(){socket.emit('stopAudio');audioPlaying=false;audioPausedAt=0;audioStartedAt=null;updAudioTimer(0);st('🎵 أوقف');}
-function setAudioVol(v){audioVol=+v;document.getElementById('audioVolVal').textContent=v+'%';socket.emit('setAudioVolume',{volume:v/100,muted:audioMuted});}
-function toggleAudioMute(){audioMuted=!audioMuted;const b=document.getElementById('audioMuteBtn');b.textContent=audioMuted?'رفع الكتم':'كتم';b.classList.toggle('on',audioMuted);socket.emit('setAudioVolume',{volume:audioVol/100,muted:audioMuted});}
-function audioSeekMove(v){audioDragging=true;updAudioTimerDisp((v/100)*audioDur);}
-function audioSeekDrop(v){audioDragging=false;audioSeekTo((v/100)*audioDur);}
-function audioSeekTo(s){audioStartedAt=Date.now()-(s*1000);audioPausedAt=s;socket.emit('seekAudio',{seconds:s});st('⏩ صوت '+fmtA(s));}
-function startAudioTimer(){clearInterval(audioTimer);audioTimer=setInterval(()=>{if(!audioPlaying||!audioStartedAt)return;const s=(Date.now()-audioStartedAt)/1000;if(!audioDragging)updAudioTimer(s);},200);}
-function updAudioTimer(s){if(s<0)s=0;updAudioTimerDisp(s);if(audioDur>0&&!audioDragging)document.getElementById('audioSeekSl').value=(s/audioDur)*100;}
-function updAudioTimerDisp(s){document.getElementById('audioTimerDisp').textContent=fmtA(s);}
-function fmtA(s){if(s<0)s=0;return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');}
-socket.on('audioDuration',d=>{if(d.duration>0){audioDur=d.duration;const m=Math.floor((d.duration%3600)/60),s=Math.floor(d.duration%60);document.getElementById('audioSeekEnd').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}});
-
-// ===== seek =====
-function seekMove(v){dragging=true;document.getElementById('timerDisp').textContent=fmt((v/100)*dur);}
-function seekDrop(v){dragging=false;seekTo((v/100)*dur);}
-function seekManual(){const r=document.getElementById('seekIn').value.trim();let s=0;if(r.includes(':')){{const p=r.split(':');s=p.length===2?+p[0]*60+ +p[1]:+p[0]*3600+ +p[1]*60+ +p[2];}}else s=+r;if(isNaN(s))return alert('وقت غلط!');seekTo(s);document.getElementById('seekIn').value='';}
-function seekTo(s){startedAt=Date.now()-(s*1000);pausedAt=s;socket.emit('seek',{seconds:s});st('⏩ '+fmt(s));if(!dragging)updSeek(s);}
-function updSeek(s){if(!dragging&&dur>0)document.getElementById('seekSl').value=(s/dur)*100;}
-
-// ===== تحكم =====
-function sendPlay(){
-  if(!ml[ci])return;
-  const m=ml[ci];
-  const isImg=(m.type==='image'||m.type==='image360');
-  const ev=isImg?'show':'restart';
-  socket.emit(ev,{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted});
-  playing=true; pausedAt=0; startedAt=Date.now();
-  startTimer(); st('▶ '+m.name); document.getElementById('statusPill').textContent='شغّال';
-}
-function sendPause(){if(startedAt)pausedAt=(Date.now()-startedAt)/1000;playing=false;socket.emit('pause');st('⏸ متوقف');document.getElementById('statusPill').textContent='متوقف';}
-function sendRestart(){if(!ml[ci])return;socket.emit('seek',{seconds:0});socket.emit('pause');playing=false;pausedAt=0;startedAt=null;updTimer(0);document.getElementById('seekSl').value=0;st('⏮ رجع للأول');}
-function sendSync(){socket.emit('syncAll');const b=document.getElementById('syncBtn');b.classList.add('flash');setTimeout(()=>b.classList.remove('flash'),400);st('⚡ تمت المزامنة');}
-
+let ci=0, muted=false, vol=100, aVol=100, aMuted=false;
+let playing=false, startedAt=null, pausedAt=0, dur=0, dragging=false;
+let aPlaying=false, aStartedAt=null, aPausedAt=0, aDur=0, aDragging=false;
+let selType='video', selDeg=0;
+let timer=null, aTimer=null;
+let plActive=false, plTimer=null;
 let joinAllowed=false;
-function toggleJoin(){
-  socket.emit('setAllowJoin',{allow:!joinAllowed});
-}
-function kickAll(){if(confirm('هتطرد كل الأجهزة؟')){socket.emit('kickAll');st('🚪 تم طرد الكل');}}
 
-// ===== الأجهزة =====
-function vbcls(s){return s==='انتظار'?'vb-w':s==='اختيار وضع'?'vb-c':s==='عادي'?'vb-n':'vb-v';}
-function vblbl(s){return s==='انتظار'?'انتظار':s==='اختيار وضع'?'اختيار وضع':s==='عادي'?'عادي':'VR';}
-socket.on('viewerList',list=>{
-  const el=document.getElementById('viewerList');
-  if(!list.length){el.innerHTML='<div class="li-empty">لا يوجد أجهزة</div>';return;}
-  el.innerHTML=list.map(v=>`
-    <div class="v-item">
-      <div class="v-num">${v.num}</div>
-      <div class="v-info">
-        <div class="v-name">${v.name||'DEVICE'}</div>
-        <span class="v-badge ${vbcls(v.status)}">${vblbl(v.status)}</span>
-      </div>
-      <button class="v-kick" onclick="kickOne('${v.id}')">طرد</button>
-    </div>`).join('');
-});
-socket.on('viewers',c=>document.getElementById('vCount').textContent=c);
-function kickOne(id){socket.emit('kickOne',{id});st('🚪 تم طرد الجهاز');}
+const TL={video:'360°',videoFlat:'عادي',image:'صورة',image360:'ص360'};
 
-// ===== ميديا =====
-function selType(t){selType_=t;['video','videoFlat','image','image360'].forEach(x=>document.getElementById('t_'+x)?.classList.remove('sel'));document.getElementById('t_'+t)?.classList.add('sel');}
-function setDeg(v){selDeg=v;document.getElementById('degSl').value=v;document.getElementById('degVal').textContent=v+'°';document.getElementById('degSv').textContent=v+'°';}
-function cmp(d){if(d<=22||d>=338)return'N';if(d<68)return'NE';if(d<=112)return'E';if(d<158)return'SE';if(d<=202)return'S';if(d<248)return'SW';if(d<=292)return'W';return'NW';}
+// localStorage
+const DEFAULT_ML=[{name:'جولة المعبد',type:'video',degree:0,url:'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4'}];
+let ml=[], al=[];
+try{ml=JSON.parse(localStorage.getItem('vr_ml'))||DEFAULT_ML;}catch{ml=DEFAULT_ML;}
+try{al=JSON.parse(localStorage.getItem('vr_al'))||[];}catch{al=[];}
 function saveML(){try{localStorage.setItem('vr_ml',JSON.stringify(ml));}catch{}}
 function saveAL(){try{localStorage.setItem('vr_al',JSON.stringify(al));}catch{}}
 
-let editIdx=-1;
-function renderML(){
-  const el=document.getElementById('mediaList');
-  if(!ml.length){el.innerHTML='<div class="li-empty">لا يوجد محتوى</div>';return;}
-  el.innerHTML=ml.map((m,i)=>{
-    if(editIdx===i) return `
-      <div class="list-item edit-form">
-        <div style="display:flex;gap:4px;flex-wrap:wrap;">
-          <input class="tac-input rtl" id="ei_name" value="${m.name}" style="flex:1;min-width:80px;font-family:'Noto Kufi Arabic',sans-serif;direction:rtl;"/>
-          <select class="tac-input" id="ei_type" style="flex:1;min-width:80px;">
-            ${['video','videoFlat','image','image360'].map(t=>`<option value="${t}" ${m.type===t?'selected':''}>${TL[t]}</option>`).join('')}
-          </select>
-        </div>
-        <input class="tac-input ltr" id="ei_url" value="${m.url}" style="width:100%;"/>
-        <div style="display:flex;align-items:center;gap:5px;">
-          <span style="font-size:.6rem;color:var(--mu);font-family:'Oxanium',monospace;">اتجاه</span>
-          <input type="range" style="flex:1;accent-color:var(--am);" min="0" max="359" value="${m.degree||0}" id="ei_deg" oninput="document.getElementById('ei_degv').textContent=this.value+'°'">
-          <span id="ei_degv" style="font-size:.65rem;color:var(--am2);min-width:28px;font-family:'Oxanium',monospace;">${m.degree||0}°</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:5px;">
-          <span style="font-size:.6rem;color:var(--teal);font-family:'Oxanium',monospace;">📐</span>
-        </div>
-        <div style="display:flex;gap:4px;">
-          <button class="tac-btn" style="flex:1;" onclick="saveEdit(${i})">حفظ</button>
-          <button class="tac-btn danger" style="flex:1;" onclick="editIdx=-1;renderML()">إلغاء</button>
-        </div>
-      </div>`;
-    return `<div class="list-item ${i===ci?'active':''}" onclick="ci=${i};renderML()">
-      <div class="li-icon">${TI[m.type]}</div>
-      <div class="li-info">
-        <div class="li-name">${m.name}</div>
-        <div class="li-meta"><span>${TL[m.type]}</span><span>${cmp(m.degree||0)} ${m.degree||0}°</span></div>
-      </div>
-      <div class="li-acts">
-        <button class="li-play" onclick="event.stopPropagation();showM(${i})">▶</button>
-        <button class="li-edit" onclick="event.stopPropagation();startEdit(${i})">✏</button>
-        <button class="li-del"  onclick="event.stopPropagation();delM(${i})">✕</button>
-      </div>
-    </div>`;
+// اتصال
+socket.on('connect',function(){
+  socket.emit('host');
+  st('✅ متصل');
+});
+socket.on('disconnect',function(){st('❌ انقطع الاتصال');});
+
+// الأجهزة
+socket.on('viewers',function(c){document.getElementById('vCount').textContent=c;});
+socket.on('viewerList',function(list){
+  var el=document.getElementById('viewerList');
+  if(!list.length){el.innerHTML='<div style="color:#64748b;font-size:.75rem;text-align:center;padding:10px">لا يوجد أجهزة</div>';return;}
+  el.innerHTML=list.map(function(v){
+    var bc=v.status==='انتظار'?'bw':v.status==='اختيار وضع'?'bc':v.status==='عادي'?'bn':'bv';
+    return '<div class="vitem"><div class="vnum">'+v.num+'</div><div style="flex:1;min-width:0"><div class="vname">'+v.name+'</div><span class="badge '+bc+'">'+v.status+'</span></div><button class="vkick" onclick="kickOne(\''+v.id+'\')">طرد</button></div>';
   }).join('');
-}
-function startEdit(i){editIdx=i;renderML();document.getElementById('ei_name')?.focus();}
-function saveEdit(i){
-  const n=document.getElementById('ei_name').value.trim(),u=document.getElementById('ei_url').value.trim(),t=document.getElementById('ei_type').value,d=parseInt(document.getElementById('ei_deg').value);
-  if(!n||!u)return alert('الاسم والرابط مطلوبين!');
-  ml[i]={...ml[i],name:n,url:u,type:t,degree:d};editIdx=-1;saveML();renderML();st('✅ حُفظ: '+n);
-}
-function addMedia(){const n=document.getElementById('mName').value.trim(),u=document.getElementById('mUrl').value.trim();if(!n||!u)return alert('الاسم والرابط مطلوبين!');ml.push({name:n,type:selType_,url:u,degree:selDeg});document.getElementById('mName').value='';document.getElementById('mUrl').value='';setDeg(0);saveML();renderML();st('✅ أُضيف: '+n);}
-function delM(i){ml.splice(i,1);if(ci>=ml.length)ci=Math.max(0,ml.length-1);saveML();renderML();}
-function showM(i){ci=i;const m=ml[i];renderML();pausedAt=0;startedAt=Date.now();playing=true;const e=(m.type==='image'||m.type==='image360')?'show':'restart';socket.emit(e,{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted});startTimer();st('▶ '+m.name);document.getElementById('statusPill').textContent='شغّال';}
-startTimer();st('▶ '+m.name);document.getElementById('statusPill').textContent='شغّال';}
+});
 
-// ===== قائمة الصوت =====
-let al=[];try{const s=localStorage.getItem('vr_al');if(s)al=JSON.parse(s);}catch{}
-let editAIdx=-1;
-function renderAL(){
-  const el=document.getElementById('audioList');
-  if(!al.length){el.innerHTML='<div class="li-empty">لا يوجد أصوات</div>';return;}
-  el.innerHTML=al.map((a,i)=>{
-    if(editAIdx===i) return `
-      <div class="list-item edit-form" style="border-color:rgba(139,92,246,.5)!important;">
-        <input class="tac-input rtl" id="ai_name" value="${a.name}" style="width:100%;font-family:'Noto Kufi Arabic',sans-serif;direction:rtl;"/>
-        <input class="tac-input ltr" id="ai_url"  value="${a.url}"  style="width:100%;"/>
-        <div style="display:flex;gap:4px;">
-          <button class="tac-btn purple" style="flex:1;" onclick="saveAEdit(${i})">حفظ</button>
-          <button class="tac-btn danger" style="flex:1;" onclick="editAIdx=-1;renderAL()">إلغاء</button>
-        </div>
-      </div>`;
-    return `<div class="list-item">
-      <div class="li-icon">🎵</div>
-      <div class="li-info">
-        <div class="li-name">${a.name}</div>
-        <div class="li-meta"><span>${a.url.length>30?'…'+a.url.slice(-24):a.url}</span></div>
-      </div>
-      <div class="li-acts">
-        <button class="li-play" style="background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.4);color:#a78bfa;" onclick="playAudioItem(${i})">▶</button>
-        <button class="li-edit" onclick="editAIdx=${i};renderAL()">✏</button>
-        <button class="li-del"  onclick="delA(${i})">✕</button>
-      </div>
-    </div>`;
-  }).join('');
+// ON/OFF
+function toggleJoin(){
+  socket.emit('open',{allow:!joinAllowed});
 }
-function saveAEdit(i){const n=document.getElementById('ai_name').value.trim(),u=document.getElementById('ai_url').value.trim();if(!n||!u)return alert('الاسم والرابط مطلوبين!');al[i]={name:n,url:u};editAIdx=-1;saveAL();renderAL();st('🎵 ✅ حُفظ: '+n);}
-function addAudio(){const n=document.getElementById('aName').value.trim(),u=document.getElementById('aUrlIn').value.trim();if(!n||!u)return alert('الاسم والرابط مطلوبين!');al.push({name:n,url:u});document.getElementById('aName').value='';document.getElementById('aUrlIn').value='';saveAL();renderAL();st('🎵 ✅ أُضيف: '+n);}
-function delA(i){al.splice(i,1);saveAL();renderAL();}
-function playAudioItem(i){const a=al[i];document.getElementById('audioUrl').value=a.url;socket.emit('playAudio',{url:a.url,volume:audioVol/100,muted:audioMuted});audioPlaying=true;audioPausedAt=0;audioStartedAt=Date.now();startAudioTimer();st('🎵 ▶ '+a.name);}
+socket.on('openOk',function(data){
+  joinAllowed=data.allow;
+  var btn=document.getElementById('joinBtn');
+  if(joinAllowed){btn.textContent='✅ مفتوح';btn.className='btn btn-green';}
+  else{btn.textContent='⛔ مغلق';btn.className='btn btn-off';}
+  st(joinAllowed?'✅ الدخول مفتوح':'⛔ الدخول مغلق');
+});
 
-// ===== بلاي ليست =====
-let plActive = false;
-let plTimer = null;
-const IMG_DURATION = 10; // ثواني للصورة
+function kickOne(id){socket.emit('kick',{id:id});st('🚪 تم الطرد');}
+function kickAll(){if(confirm('طرد كل الأجهزة؟')){socket.emit('kickall');st('🚪 تم طرد الكل');}}
 
-function togglePlaylist() {
-  if (plActive) {
-    plStop();
-  } else {
-    plStart();
-  }
+// تحكم فيديو
+function sendPlay(){
+  if(!ml[ci])return;
+  var m=ml[ci];
+  var ev=(m.type==='image'||m.type==='image360')?'play':'play';
+  socket.emit('play',{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted:muted});
+  playing=true; pausedAt=0; startedAt=Date.now();
+  startTimer(); st('▶ '+m.name);
+  document.getElementById('statusPill').textContent='شغّال';
+}
+function sendPause(){
+  if(startedAt) pausedAt=(Date.now()-startedAt)/1000;
+  playing=false; socket.emit('pause');
+  st('⏸ متوقف'); document.getElementById('statusPill').textContent='متوقف';
+}
+function sendReset(){
+  socket.emit('seek',{t:0}); socket.emit('pause');
+  playing=false; pausedAt=0; startedAt=null;
+  updTimer(0); document.getElementById('seekSl').value=0;
+  st('⏮ رجع للأول');
+}
+function sendSync(){socket.emit('sync');st('⚡ تمت المزامنة');}
+
+// seek
+function seekMove(v){dragging=true;updTimer((v/100)*dur);}
+function seekDrop(v){dragging=false;doSeek((v/100)*dur);}
+function seekManual(){
+  var r=document.getElementById('seekIn').value.trim(); var t=0;
+  if(r.includes(':')){var p=r.split(':');t=p.length===2?+p[0]*60+ +p[1]:+p[0]*3600+ +p[1]*60+ +p[2];}
+  else t=+r;
+  if(isNaN(t))return;
+  doSeek(t); document.getElementById('seekIn').value='';
+}
+function doSeek(t){
+  startedAt=Date.now()-(t*1000); pausedAt=t;
+  socket.emit('seek',{t:t}); updTimer(t);
+  if(dur>0) document.getElementById('seekSl').value=(t/dur)*100;
+  st('⏩ '+fmt(t));
 }
 
-function plStart() {
-  if (!ml.length) return st('القائمة فاضية!');
-  plActive = true;
-  ci = 0;
-  const btn = document.getElementById('plBtn');
-  btn.textContent = '⏹ وقّف البلاي ليست';
-  btn.style.background = 'rgba(239,68,68,.15)';
-  btn.style.borderColor = 'rgba(239,68,68,.4)';
-  btn.style.color = 'var(--red)';
-  plPlayCurrent();
+// صوت فيديو
+function setVol(v){vol=+v;document.getElementById('volVal').textContent=v+'%';socket.emit('vol',{v:v/100,m:muted});}
+function toggleMute(){muted=!muted;document.getElementById('muteBtn').textContent=muted?'🔊':'🔇';socket.emit('vol',{v:vol/100,m:muted});}
+
+// تايمر
+function startTimer(){
+  clearInterval(timer);
+  timer=setInterval(function(){
+    if(!playing||!startedAt)return;
+    var t=(Date.now()-startedAt)/1000;
+    if(!dragging){updTimer(t);if(dur>0)document.getElementById('seekSl').value=(t/dur)*100;}
+    if(plActive&&dur>0&&t>=dur-0.5){clearInterval(timer);plNext();}
+  },200);
 }
+function updTimer(t){if(t<0)t=0;document.getElementById('timerDisp').textContent=fmt(t);}
+function fmt(t){if(t<0)t=0;return pad(Math.floor(t/3600))+':'+pad(Math.floor((t%3600)/60))+':'+pad(Math.floor(t%60));}
+function pad(n){return String(n).padStart(2,'0');}
 
-function plStop() {
-  plActive = false;
-  clearTimeout(plTimer);
-  const btn = document.getElementById('plBtn');
-  btn.textContent = '▶▶ تشغيل البلاي ليست';
-  btn.style.background = 'rgba(45,212,191,.1)';
-  btn.style.borderColor = 'rgba(45,212,191,.4)';
-  btn.style.color = 'var(--teal)';
-  st('⏹ البلاي ليست وقفت');
-}
-
-function plPlayCurrent() {
-  if (!plActive || !ml.length) return;
-  const m = ml[ci];
-  renderML();
-  const isImg = (m.type === 'image' || m.type === 'image360');
-  pausedAt = 0; startedAt = Date.now(); playing = !isImg;
-  const ev = isImg ? 'show' : 'restart';
-  socket.emit(ev, { url: m.url, type: m.type, degree: m.degree || 0, volume: vol / 100, muted });
-  if (!isImg) startTimer();
-  st('▶▶ ' + (ci + 1) + '/' + ml.length + ' — ' + m.name);
-  document.getElementById('statusPill').textContent = 'شغّال';
-
-  if (isImg) {
-    // الصورة: انتظر IMG_DURATION ثانية
-    plTimer = setTimeout(plNext, IMG_DURATION * 1000);
-  }
-  // الفيديو: بيتابع عن طريق checkPlEnd
-}
-
-function plNext() {
-  if (!plActive) return;
-  clearTimeout(plTimer);
-  ci++;
-  if (ci >= ml.length) {
-    // خلصت القائمة
-    plStop();
-    sendPause();
-    st('✅ البلاي ليست خلصت');
-    return;
-  }
-  plPlayCurrent();
-}
-
-// راقب الفيديو لما يخلص
-let plCheckInterval = null;
-function startPlCheck() {
-  clearInterval(plCheckInterval);
-  plCheckInterval = setInterval(function() {
-    if (!plActive || !playing || !dur) return;
-    const elapsed = (Date.now() - startedAt) / 1000;
-    if (elapsed >= dur - 0.5) {
-      clearInterval(plCheckInterval);
-      plNext();
-    }
-  }, 500);
-}
-
-// لما السيرفر يبعت مدة الفيديو وإحنا في playlist وده بيغير dur
-socket.on('videoDuration', d => {
-  if (d.duration > 0) {
-    dur = d.duration;
-    const m = Math.floor((d.duration % 3600) / 60), s = Math.floor(d.duration % 60);
-    document.getElementById('seekEnd').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-    if (plActive) startPlCheck();
+socket.on('dur',function(d){
+  if(d.duration>0){
+    dur=d.duration;
+    var m=Math.floor((d.duration%3600)/60),s=Math.floor(d.duration%60);
+    document.getElementById('seekEnd').textContent=pad(m)+':'+pad(s);
+    if(plActive) startTimer();
   }
 });
-function startTimer(){clearInterval(timer);timer=setInterval(()=>{if(!playing||!startedAt)return;const s=(Date.now()-startedAt)/1000;if(!dragging){updTimer(s);updSeek(s);}},200);}
-function updTimer(s){if(s<0)s=0;document.getElementById('timerDisp').textContent=fmt(s);}
-function fmt(s){if(s<0)s=0;return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');}
+socket.on('state',function(d){
+  playing=d.playing; startedAt=d.startedAt; pausedAt=d.pausedAt||0;
+  if(!playing) updTimer(pausedAt);
+});
+
+// صوت منفصل
+function aPlay(){
+  var u=document.getElementById('audioUrl').value.trim();
+  if(!u)return st('ضع رابط الصوت!');
+  socket.emit('aplay',{url:u,v:aVol/100});
+  aPlaying=true; aStartedAt=Date.now()-(aPausedAt*1000); startATimer(); st('🎵 شغّل');
+}
+function aPause(){
+  if(aStartedAt) aPausedAt=(Date.now()-aStartedAt)/1000;
+  aPlaying=false; socket.emit('apause'); st('🎵 وقّف');
+}
+function aRestart(){
+  var u=document.getElementById('audioUrl').value.trim();
+  if(!u)return st('ضع رابط الصوت!');
+  socket.emit('arestart',{url:u,v:aVol/100});
+  aPlaying=true; aPausedAt=0; aStartedAt=Date.now(); startATimer(); st('🎵 من الأول');
+}
+function aSync(){socket.emit('sync');st('⚡');}
+function aStop(){socket.emit('astop');aPlaying=false;aPausedAt=0;aStartedAt=null;updATimer(0);st('🎵 وقف');}
+function setAVol(v){aVol=+v;document.getElementById('aVolVal').textContent=v+'%';socket.emit('avol',{v:v/100});}
+function toggleAMute(){aMuted=!aMuted;document.getElementById('aMuteBtn').textContent=aMuted?'🔊':'🔇';socket.emit('avol',{v:aMuted?0:aVol/100});}
+function aSeekMove(v){aDragging=true;updATimer((v/100)*aDur);}
+function aSeekDrop(v){aDragging=false;var t=(v/100)*aDur;aStartedAt=Date.now()-(t*1000);aPausedAt=t;socket.emit('aseek',{t:t});updATimer(t);st('⏩ صوت '+fmt(t));}
+function startATimer(){
+  clearInterval(aTimer);
+  aTimer=setInterval(function(){
+    if(!aPlaying||!aStartedAt)return;
+    var t=(Date.now()-aStartedAt)/1000;
+    if(!aDragging){updATimer(t);}
+  },200);
+}
+function updATimer(t){
+  if(t<0)t=0;
+  document.getElementById('audioTimer').textContent=fmt(t);
+  if(aDur>0&&!aDragging) document.getElementById('aSeekSl').value=(t/aDur)*100;
+}
+
+// ميديا
+function setType(t){selType=t;['video','videoFlat','image','image360'].forEach(function(x){document.getElementById('t_'+x).className='tbtn';});document.getElementById('t_'+t).className='tbtn sel';}
+function setDeg(v){selDeg=+v;document.getElementById('degSl').value=v;document.getElementById('degVal').textContent=v+'°';}
+
+let editIdx=-1;
+function renderML(){
+  var el=document.getElementById('mediaList');
+  if(!ml.length){el.innerHTML='<div style="color:#64748b;font-size:.75rem;text-align:center;padding:10px">لا يوجد محتوى</div>';return;}
+  el.innerHTML=ml.map(function(m,i){
+    if(editIdx===i) return '<div class="edit-box">'+
+      '<input type="text" id="ei_name" value="'+m.name+'" placeholder="الاسم">'+
+      '<input type="text" id="ei_url" value="'+m.url+'" placeholder="الرابط">'+
+      '<select id="ei_type" style="background:#0f3460;border:1px solid #1e40af;color:#eee;padding:4px;border-radius:4px">'+
+        ['video','videoFlat','image','image360'].map(function(t){return '<option value="'+t+'"'+(m.type===t?' selected':'')+'>'+TL[t]+'</option>';}).join('')+
+      '</select>'+
+      '<div class="row"><span class="lbl">🧭</span><input type="range" id="ei_deg" min="0" max="359" value="'+(m.degree||0)+'" style="flex:1"><span id="ei_dv" style="font-size:.65rem;color:#f59e0b">'+(m.degree||0)+'°</span></div>'+
+      '<div class="row"><button class="btn btn-green" onclick="saveEdit('+i+')" style="flex:1">💾 حفظ</button><button class="btn btn-gray" onclick="editIdx=-1;renderML()" style="flex:1">✕ إلغاء</button></div>'+
+    '</div>';
+    return '<div class="item'+(i===ci?' active':'')+'" onclick="ci='+i+';renderML()">'+
+      '<div style="font-size:.8rem">'+({video:'🌐',videoFlat:'🎬',image:'🖼',image360:'🌐'}[m.type])+'</div>'+
+      '<div style="flex:1;min-width:0"><div class="item-name">'+m.name+'</div><div class="item-meta">'+TL[m.type]+' • '+(m.degree||0)+'°</div></div>'+
+      '<div class="item-acts"><button class="ib ib-play" onclick="event.stopPropagation();playM('+i+')">▶</button>'+
+      '<button class="ib ib-edit" onclick="event.stopPropagation();editIdx='+i+';renderML()">✏</button>'+
+      '<button class="ib ib-del" onclick="event.stopPropagation();delM('+i+')">✕</button></div>'+
+    '</div>';
+  }).join('');
+}
+function saveEdit(i){
+  var n=document.getElementById('ei_name').value.trim();
+  var u=document.getElementById('ei_url').value.trim();
+  var t=document.getElementById('ei_type').value;
+  var d=parseInt(document.getElementById('ei_deg').value);
+  if(!n||!u)return alert('الاسم والرابط مطلوبين');
+  ml[i]={name:n,url:u,type:t,degree:d};
+  editIdx=-1; saveML(); renderML(); st('✅ تم التعديل');
+}
+function addMedia(){
+  var n=document.getElementById('mName').value.trim();
+  var u=document.getElementById('mUrl').value.trim();
+  if(!n||!u)return alert('الاسم والرابط مطلوبين');
+  ml.push({name:n,type:selType,url:u,degree:selDeg});
+  document.getElementById('mName').value=''; document.getElementById('mUrl').value='';
+  setDeg(0); saveML(); renderML(); st('✅ أُضيف: '+n);
+}
+function delM(i){ml.splice(i,1);if(ci>=ml.length)ci=Math.max(0,ml.length-1);saveML();renderML();}
+function playM(i){
+  ci=i; var m=ml[i]; renderML();
+  playing=true; pausedAt=0; startedAt=Date.now();
+  socket.emit('play',{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted:muted});
+  startTimer(); st('▶ '+m.name);
+  document.getElementById('statusPill').textContent='شغّال';
+}
+
+// قائمة الأصوات
+let editAIdx=-1;
+function renderAL(){
+  var el=document.getElementById('audioList');
+  if(!al.length){el.innerHTML='<div style="color:#64748b;font-size:.75rem;text-align:center;padding:10px">لا يوجد أصوات</div>';return;}
+  el.innerHTML=al.map(function(a,i){
+    return '<div class="item">'+
+      '<div style="font-size:.8rem">🎵</div>'+
+      '<div style="flex:1;min-width:0"><div class="item-name">'+a.name+'</div></div>'+
+      '<div class="item-acts">'+
+      '<button class="ib" style="background:#8b5cf6;color:#fff" onclick="playAItem('+i+')">▶</button>'+
+      '<button class="ib ib-del" onclick="delA('+i+')">✕</button></div>'+
+    '</div>';
+  }).join('');
+}
+function addAudio(){
+  var n=document.getElementById('aName').value.trim();
+  var u=document.getElementById('aUrl').value.trim();
+  if(!n||!u)return alert('الاسم والرابط مطلوبين');
+  al.push({name:n,url:u});
+  document.getElementById('aName').value=''; document.getElementById('aUrl').value='';
+  saveAL(); renderAL(); st('🎵 أُضيف: '+n);
+}
+function delA(i){al.splice(i,1);saveAL();renderAL();}
+function playAItem(i){
+  document.getElementById('audioUrl').value=al[i].url;
+  socket.emit('aplay',{url:al[i].url,v:aVol/100});
+  aPlaying=true; aPausedAt=0; aStartedAt=Date.now(); startATimer(); st('🎵 ▶ '+al[i].name);
+}
+
+// بلاي ليست
+function togglePL(){plActive?plStop():plStart();}
+function plStart(){
+  if(!ml.length)return st('القائمة فاضية!');
+  plActive=true; ci=0;
+  document.getElementById('plBtn').textContent='⏹ وقّف البلاي ليست';
+  document.getElementById('plBtn').className='btn btn-red';
+  plPlayCurrent();
+}
+function plStop(){
+  plActive=false; clearTimeout(plTimer);
+  document.getElementById('plBtn').textContent='▶▶ البلاي ليست';
+  document.getElementById('plBtn').className='btn btn-teal';
+  st('⏹ البلاي ليست وقفت');
+}
+function plPlayCurrent(){
+  if(!plActive||!ml.length)return;
+  var m=ml[ci]; renderML();
+  var isImg=(m.type==='image'||m.type==='image360');
+  playing=!isImg; pausedAt=0; startedAt=Date.now();
+  socket.emit('play',{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted:muted});
+  if(!isImg) startTimer();
+  st('▶▶ '+(ci+1)+'/'+ml.length+' — '+m.name);
+  if(isImg) plTimer=setTimeout(plNext,10000);
+}
+function plNext(){
+  if(!plActive)return;
+  clearTimeout(plTimer); ci++;
+  if(ci>=ml.length){plStop();sendPause();st('✅ البلاي ليست خلصت');return;}
+  plPlayCurrent();
+}
+
 function st(m){document.getElementById('statusBox').textContent=m;}
 
-socket.on('state',d=>{playing=d.playing;startedAt=d.startedAt;pausedAt=d.pausedAt||0;if(!playing)updTimer(pausedAt);});
-
-renderML(); renderAL(); startTimer();
+renderML(); renderAL();
 </script>
 </body>
 </html>
