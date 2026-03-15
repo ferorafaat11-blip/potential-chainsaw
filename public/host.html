@@ -531,6 +531,23 @@ socket.emit('registerHost');
 // لما السيرفر يتصل أو يتصل من جديد، سجّل نفسك كهوست
 socket.on('connect', function() {
   socket.emit('registerHost');
+  st('✅ متصل: ' + socket.id.slice(0,6));
+});
+socket.on('disconnect', function() { st('❌ انقطع الاتصال'); });
+socket.on('connect_error', function(e) { st('❌ خطأ: ' + e.message); });
+socket.on('joinToggleOk', function(data) {
+  var joinAllowed2 = data.allow;
+  var btn = document.getElementById('joinToggle');
+  if (joinAllowed2) {
+    btn.textContent = '✅ مفتوح';
+    btn.classList.add('on');
+    st('✅ مفتوح — الأجهزة على شاشة الاختيار');
+  } else {
+    btn.textContent = '⛔ مغلق';
+    btn.classList.remove('on');
+    st('⛔ مغلق — الأجهزة في الانتظار');
+  }
+  joinAllowed = joinAllowed2;
 });
 let ci=0, selType_='video', selDeg=0;
 let playing=false, startedAt=null, pausedAt=0;
@@ -592,12 +609,6 @@ let joinAllowed=false;
 function toggleJoin(){
   socket.emit('setAllowJoin',{allow:!joinAllowed});
 }
-socket.on('joinToggleOk',(data)=>{
-  joinAllowed=data.allow;
-  const btn=document.getElementById('joinToggle');
-  if(joinAllowed){btn.textContent='✅ مفتوح';btn.classList.add('on');st('✅ مفتوح — الأجهزة على شاشة الاختيار');}
-  else{btn.textContent='⛔ مغلق';btn.classList.remove('on');st('⛔ مغلق — الأجهزة في الانتظار');}
-});
 function kickAll(){if(confirm('هتطرد كل الأجهزة؟')){socket.emit('kickAll');st('🚪 تم طرد الكل');}}
 
 // ===== الأجهزة =====
