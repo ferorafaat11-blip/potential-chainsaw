@@ -140,6 +140,10 @@ io.on('connection', function(socket) {
   });
 
   socket.on('setAllowJoin', function(data) {
+    // سجّل الهوست تلقائي لو مش مسجّل
+    hostSockets[socket.id] = true;
+    if (viewers[socket.id]) { delete viewers[socket.id]; broadcastViewers(); }
+
     allowJoin = data.allow;
     var ids = Object.keys(viewers);
     for (var i = 0; i < ids.length; i++) {
@@ -187,3 +191,4 @@ io.on('connection', function(socket) {
 
 var PORT = process.env.PORT || 3000;
 server.listen(PORT, function() { console.log('Server on port ' + PORT); });
+    
