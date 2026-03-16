@@ -307,6 +307,12 @@ input[type=text]:focus, select:focus { outline: none; border-color: var(--bl); }
       <button class="btn b-gray" onclick="plNextItem()">⏭ التالي</button>
       <button class="btn b-blue" onclick="plReset()">🔁 أول</button>
     </div>
+    <div class="ctrl-row">
+      <span class="vol-lbl">⏳ عد تنازلي:</span>
+      <input type="number" id="cdSecs" value="5" min="1" max="60" style="width:60px;padding:4px 6px;background:var(--s2);border:1px solid var(--br);border-radius:5px;color:var(--tx);font-size:.8rem;text-align:center">
+      <span class="vol-lbl">ثانية</span>
+      <button class="btn b-yellow" onclick="startCountdown()">⏱ ابدأ العد</button>
+    </div>
     <div style="display:flex;align-items:center;gap:7px">
       <input type="checkbox" id="plAudioOn" style="width:15px;height:15px;accent-color:var(--pu)">
       <label for="plAudioOn" style="font-size:.75rem;color:var(--mu);cursor:pointer">شغّل صوت مع البلاي ليست</label>
@@ -632,6 +638,12 @@ function playAItem(i) {
 document.getElementById('plAudioOn').addEventListener('change', function() {
   document.getElementById('plAudioRow').style.display = this.checked ? 'block' : 'none';
 });
+
+function startCountdown() {
+  var secs = parseInt(document.getElementById('cdSecs').value) || 5;
+  socket.emit('countdown', { secs: secs });
+  log('⏳ بدأ العد التنازلي: ' + secs + ' ثانية');
+}
 
 function plToggle() { plActive ? plStop() : plBegin(); }
 
