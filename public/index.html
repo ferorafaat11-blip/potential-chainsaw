@@ -146,11 +146,21 @@ var dname = /iPhone|iPad/i.test(navigator.userAgent) ? '📱 iPhone' :
             /Android/i.test(navigator.userAgent)      ? '📱 Android' :
             /Windows/i.test(navigator.userAgent)      ? '💻 Windows' : '📟 جهاز';
 
-// iOS cursor off
-if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+// إخفاء الـ cursor على iOS و Android في وضع VR
+var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+var isAndroid = /Android/i.test(navigator.userAgent);
+if (isIOS) {
   var cur = document.getElementById('cur');
   if (cur) cur.setAttribute('visible', false);
 }
+scene.addEventListener('enter-vr', function() {
+  var cur = document.getElementById('cur');
+  if (cur) cur.setAttribute('visible', false);
+});
+scene.addEventListener('exit-vr', function() {
+  var cur = document.getElementById('cur');
+  if (cur && !isIOS) cur.setAttribute('visible', true);
+});
 
 // wake lock
 var wl = null;
