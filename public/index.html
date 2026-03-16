@@ -213,7 +213,12 @@ socket.on('vol',function(d){
 
 socket.on('audio',function(d){
   if(!d.url&&!d.playing){bgAudio.pause();return;}
-  if(d.url&&bgAudio.src!==d.url){bgAudio.src=d.url;}
+  if(d.url&&bgAudio.src!==d.url){
+    bgAudio.src=d.url;
+    bgAudio.addEventListener('loadedmetadata',function(){
+      if(bgAudio.duration&&!isNaN(bgAudio.duration)) socket.emit('adur',{duration:bgAudio.duration});
+    },{once:true});
+  }
   if(d.stop){bgAudio.pause();bgAudio.currentTime=0;return;}
   if(d.playing&&d.startedAt){
     var pos=(d.pausedAt||0)+(Date.now()-d.serverTime)/1000;
