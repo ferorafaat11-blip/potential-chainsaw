@@ -158,8 +158,11 @@ scene.addEventListener('enter-vr', function() {
   if (cur) cur.setAttribute('visible', false);
 });
 scene.addEventListener('exit-vr', function() {
+  curMode = 'normal';
   var cur = document.getElementById('cur');
   if (cur && !isIOS) cur.setAttribute('visible', true);
+  // أرجع زرار تغيير الوضع
+  if (started) document.getElementById('swBtn').style.display = 'block';
 });
 
 // wake lock
