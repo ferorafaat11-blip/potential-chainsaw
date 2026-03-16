@@ -150,6 +150,7 @@ select{background:#0f3460;border:1px solid #1e40af;color:#eee;padding:4px 6px;bo
     <div class="row">
       <button class="btn btn-teal" id="plBtn" onclick="togglePL()">▶▶ ابدأ</button>
       <button class="btn btn-gray" onclick="plNext()">⏭ التالي</button>
+      <button class="btn btn-blue" onclick="plRestart()">🔁 أول</button>
     </div>
     <div class="row">
       <input type="checkbox" id="plWithAudio" style="width:16px;height:16px;accent-color:#8b5cf6">
@@ -300,9 +301,20 @@ socket.on('state',function(d){
 });
 
 // صوت منفصل
+// عنصر صوت محلي للهوست عشان يحسب المدة والتايمر
+var localAudio = new Audio();
+localAudio.addEventListener('loadedmetadata', function() {
+  if(localAudio.duration && !isNaN(localAudio.duration)) {
+    aDur = localAudio.duration;
+    var m=Math.floor((aDur%3600)/60), s=Math.floor(aDur%60);
+    document.getElementById('aSeekEnd').textContent=pad(m)+':'+pad(s);
+  }
+});
+
 function aPlay(){
   var u=document.getElementById('audioUrl').value.trim();
   if(!u)return st('ضع رابط الصوت!');
+  if(localAudio.src !== u){ localAudio.src=u; localAudio.load(); }
   socket.emit('aplay',{url:u,v:aVol/100});
   aPlaying=true; aPausedAt=0; aStartedAt=Date.now(); startATimer(); st('🎵 شغّل');
 }
@@ -313,6 +325,7 @@ function aPause(){
 function aRestart(){
   var u=document.getElementById('audioUrl').value.trim();
   if(!u)return st('ضع رابط الصوت!');
+  if(localAudio.src !== u){ localAudio.src=u; localAudio.load(); }
   socket.emit('arestart',{url:u,v:aVol/100});
   aPlaying=true; aPausedAt=0; aStartedAt=Date.now(); startATimer(); st('🎵 من الأول');
 }
@@ -343,10 +356,17 @@ socket.on('adur',function(d){
     aDur=d.duration;
     var m=Math.floor((d.duration%3600)/60),s=Math.floor(d.duration%60);
     document.getElementById('aSeekEnd').textContent=pad(m)+':'+pad(s);
+    st('🎵 مدة: '+fmt(d.duration));
   }
 });
 
-// ميديا
+socket.on('adur',function(d){
+  if(d.duration>0){
+    aDur=d.duration;
+    var m=Math.floor((d.duration%3600)/60),s=Math.floor(d.duration%60);
+    document.getElementById('aSeekEnd').textContent=pad(m)+':'+pad(s);
+  }
+});
 function setType(t){selType=t;['video','videoFlat','image','image360'].forEach(function(x){document.getElementById('t_'+x).className='tbtn';});document.getElementById('t_'+t).className='tbtn sel';}
 function setDeg(v){selDeg=+v;document.getElementById('degSl').value=v;document.getElementById('degVal').textContent=v+'°';}
 
@@ -458,10 +478,21 @@ function plStart(){
   plPlayCurrent();
 }
 function plStop(){
-  plActive=false;clearTimeout(plTimer);plIdx=0;
+  plActive=false; clearTimeout(plTimer); plIdx=0;
   document.getElementById('plBtn').textContent='▶▶ ابدأ';
   document.getElementById('plBtn').className='btn btn-teal';
+  // وقّف الفيديو
+  sendPause();
   st('⏹ البلاي ليست وقفت');
+}
+function plRestart(){
+  // أعد من الأول مع وقف
+  plActive=false; clearTimeout(plTimer); plIdx=0;
+  document.getElementById('plBtn').textContent='▶▶ ابدأ';
+  document.getElementById('plBtn').className='btn btn-teal';
+  sendPause(); updTimer(0);
+  document.getElementById('seekSl').value=0;
+  st('🔁 جاهز من الأول — اضغط ابدأ');
 }
 function plPlayCurrent(){
   if(!plActive)return;
