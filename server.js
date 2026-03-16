@@ -82,7 +82,13 @@ io.on('connection', function(s) {
     if (data.volume !== undefined) state.volume = data.volume;
     if (data.muted !== undefined) state.muted = data.muted;
     state.playing = true;
-    state.startedAt = Date.now() - (state.pausedAt * 1000);
+    // forceRestart: ابدأ من الصفر دايماً
+    if (data.forceRestart) {
+      state.pausedAt = 0;
+      state.startedAt = Date.now();
+    } else {
+      state.startedAt = Date.now() - (state.pausedAt * 1000);
+    }
     io.emit('state', gs());
   });
 
@@ -107,6 +113,8 @@ io.on('connection', function(s) {
   s.on('sync', function() { io.emit('state', gs()); });
 
   s.on('dur', function(data) { io.emit('dur', data); });
+
+  s.on('adur', function(data) { io.emit('adur', data); });
 
   s.on('aplay', function(data) {
     if (data.url) state.audioUrl = data.url;
