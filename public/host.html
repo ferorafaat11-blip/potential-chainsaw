@@ -213,8 +213,11 @@ function saveML(){try{localStorage.setItem('vr_ml',JSON.stringify(ml));}catch{}}
 function saveAL(){try{localStorage.setItem('vr_al',JSON.stringify(al));}catch{}}
 
 // اتصال
-socket.on('connect',function(){socket.emit('host');st('✅ متصل');});
+function onConnect(){socket.emit('host');st('✅ متصل');}
+if(socket.connected) onConnect();
+socket.on('connect', onConnect);
 socket.on('disconnect',function(){st('❌ انقطع الاتصال');});
+socket.on('connect_error',function(e){st('❌ خطأ اتصال');});
 
 // أجهزة
 socket.on('viewers',function(c){document.getElementById('vCount').textContent=c;});
