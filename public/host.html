@@ -80,7 +80,11 @@ select{background:#0f3460;border:1px solid #1e40af;color:#eee;padding:4px 6px;bo
     <div class="timer" id="timerDisp">00:00:00</div>
     <div class="row">
       <span class="lbl">00:00</span>
-      <input type="range" id="seekSl" min="0" max="100" value="0" oninput="seekMove(this.value)" onchange="seekDrop(this.value)">
+      <input type="range" id="seekSl" min="0" max="100" value="0"
+        oninput="if(dragging)updTimer((this.value/100)*dur)"
+        onmousedown="dragging=true" ontouchstart="dragging=true"
+        onmouseup="seekDrop(this.value);dragging=false" ontouchend="seekDrop(this.value);dragging=false"
+        onchange="seekDrop(this.value)">
       <span class="lbl" id="seekEnd">00:00</span>
     </div>
     <div class="row">
@@ -130,7 +134,11 @@ select{background:#0f3460;border:1px solid #1e40af;color:#eee;padding:4px 6px;bo
     <div class="timer" id="audioTimer" style="font-size:1.1rem;color:#8b5cf6">00:00:00</div>
     <div class="row">
       <span class="lbl">00:00</span>
-      <input type="range" id="aSeekSl" min="0" max="100" value="0" oninput="aSeekMove(this.value)" onchange="aSeekDrop(this.value)">
+      <input type="range" id="aSeekSl" min="0" max="100" value="0"
+        oninput="if(aDragging)updATimer((this.value/100)*aDur)"
+        onmousedown="aDragging=true" ontouchstart="aDragging=true"
+        onmouseup="aSeekDrop(this.value);aDragging=false" ontouchend="aSeekDrop(this.value);aDragging=false"
+        onchange="aSeekDrop(this.value)">
       <span class="lbl" id="aSeekEnd">00:00</span>
     </div>
     <input type="text" id="audioUrl" placeholder="رابط الصوت mp3...">
@@ -256,7 +264,6 @@ function sendReset(){
 }
 function sendSync(){socket.emit('sync');st('⚡ Sync');}
 
-function seekMove(v){dragging=true;updTimer((v/100)*dur);}
 function seekDrop(v){
   dragging=false;
   var t=(v/100)*dur;
@@ -331,7 +338,6 @@ function aRestart(){
 }
 function aStop(){socket.emit('astop');aPlaying=false;aPausedAt=0;aStartedAt=null;clearInterval(aTimerInt);updATimer(0);st('🎵 وقف');}
 function setAVol(v){aVol=+v;document.getElementById('aVolVal').textContent=v+'%';socket.emit('avol',{v:v/100});}
-function aSeekMove(v){aDragging=true;updATimer((v/100)*aDur);}
 function aSeekDrop(v){
   aDragging=false;
   var t=(v/100)*aDur;
