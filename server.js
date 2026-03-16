@@ -146,6 +146,17 @@ io.on('connection', function(socket) {
     io.emit('adur', d);
   });
 
+  socket.on('restart-session', function() {
+    // ابعت الأجهزة لشاشة الاختيار من غير ما تمسح حاجة
+    var ids = Object.keys(viewers);
+    for (var i = 0; i < ids.length; i++) {
+      var s = io.sockets.sockets.get(ids[i]);
+      if (s) s.emit('room-open');
+      if (viewers[ids[i]]) viewers[ids[i]].status = 'اختيار وضع';
+    }
+    bcast();
+  });
+
   socket.on('countdown', function(data) {
     io.emit('countdown', { secs: data.secs });
   });
