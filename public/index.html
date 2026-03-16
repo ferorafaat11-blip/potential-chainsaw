@@ -3,234 +3,274 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>VR 360</title>
+<title>VR</title>
 <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;overflow:hidden}
-#wait{position:fixed;inset:0;z-index:9999;background:radial-gradient(#0a0f2e,#000);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
-.logo{font-size:4rem}
-.wtxt{color:#fff;font-size:1.2rem;font-family:Arial}
-.dots{display:flex;gap:6px}
-.dot{width:8px;height:8px;border-radius:50%;background:#3b82f6;animation:db 1.2s infinite}
-.dot:nth-child(2){animation-delay:.2s}
-.dot:nth-child(3){animation-delay:.4s}
-@keyframes db{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
-#mode{display:none;position:fixed;inset:0;z-index:9998;background:radial-gradient(#08102a,#000);flex-direction:column;align-items:center;justify-content:center;gap:20px}
-.mtitle{color:#94a3b8;font-size:1rem;font-family:Arial}
-.mcards{display:flex;gap:16px}
-.mcard{width:140px;padding:20px;border-radius:12px;border:2px solid;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;font-family:Arial}
-.mcard:active{transform:scale(.95)}
-.mc-n{border-color:#ffffff40;background:#ffffff08;color:#fff}
-.mc-v{border-color:#f59e0b80;background:#f59e0b10;color:#f59e0b}
-.micon{font-size:2.5rem}
-.mname{font-size:.9rem;font-weight:bold}
-.mdesc{font-size:.6rem;color:#64748b;text-align:center}
-#switchBtn{display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9997;padding:10px 24px;background:rgba(0,0,0,.6);border:1px solid #f59e0b60;border-radius:50px;color:#f59e0b;font-size:.85rem;font-family:Arial;cursor:pointer}
-a-scene{width:100vw;height:100vh}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; overflow:hidden; font-family:Arial,sans-serif; }
+
+#wait {
+  position:fixed; inset:0; z-index:9999;
+  background: radial-gradient(ellipse at center, #0d1b2a 0%, #000 100%);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px;
+}
+.w-icon { font-size:4rem; animation: float 3s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+.w-title { color:#fff; font-size:1.3rem; font-weight:700; letter-spacing:2px; }
+.w-sub { color:#4a6070; font-size:.85rem; display:flex; align-items:center; gap:8px; }
+.dots span {
+  display:inline-block; width:7px; height:7px; border-radius:50%;
+  background:#3b82f6; animation:db 1.2s infinite;
+}
+.dots span:nth-child(2){ animation-delay:.2s; }
+.dots span:nth-child(3){ animation-delay:.4s; }
+@keyframes db { 0%,80%,100%{opacity:.15;transform:scale(.7)} 40%{opacity:1;transform:scale(1)} }
+
+#mode {
+  display:none; position:fixed; inset:0; z-index:9998;
+  background: radial-gradient(ellipse at center, #0a1628 0%, #000 100%);
+  flex-direction:column; align-items:center; justify-content:center; gap:28px;
+}
+.m-sub { color:#4a6070; font-size:.9rem; letter-spacing:1px; }
+.m-cards { display:flex; gap:16px; }
+.mcard {
+  width:150px; padding:24px 16px;
+  border-radius:14px; border:2px solid;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  cursor:pointer; transition:transform .15s, box-shadow .15s;
+}
+.mcard:active { transform:scale(.94); }
+.mn { border-color:rgba(255,255,255,.15); background:rgba(255,255,255,.04); color:#fff; }
+.mn:hover { border-color:rgba(255,255,255,.3); box-shadow:0 0 24px rgba(255,255,255,.05); }
+.mv { border-color:rgba(251,191,36,.3); background:rgba(251,191,36,.06); color:#fbbf24; }
+.mv:hover { border-color:rgba(251,191,36,.55); box-shadow:0 0 24px rgba(251,191,36,.1); }
+.mcard-icon { font-size:3rem; line-height:1; }
+.mcard-name { font-size:1rem; font-weight:700; }
+.mcard-desc { font-size:.65rem; color:#4a6070; text-align:center; line-height:1.5; }
+
+#swBtn {
+  display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  z-index:9997; padding:10px 24px;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(12px);
+  border:1px solid rgba(251,191,36,.3); border-radius:50px;
+  color:rgba(251,191,36,.8); font-size:.85rem; font-family:Arial; cursor:pointer;
+}
+a-scene { width:100vw; height:100vh; }
 </style>
 </head>
 <body>
 
 <div id="wait">
-  <div class="logo">🥽</div>
-  <div class="wtxt">في انتظار المضيف</div>
-  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  <div class="w-icon">🥽</div>
+  <div class="w-title">VR 360</div>
+  <div class="w-sub">
+    في انتظار المضيف
+    <div class="dots"><span></span><span></span><span></span></div>
+  </div>
 </div>
 
 <div id="mode">
-  <div class="mtitle">اختار وضع العرض</div>
-  <div class="mcards">
-    <div class="mcard mc-n" onclick="startMode('normal')">
-      <div class="micon">📱</div>
-      <div class="mname">عادي</div>
-      <div class="mdesc">شاشة واحدة</div>
+  <div class="m-sub">اختار وضع العرض</div>
+  <div class="m-cards">
+    <div class="mcard mn" onclick="startMode('normal')">
+      <div class="mcard-icon">📱</div>
+      <div class="mcard-name">عادي</div>
+      <div class="mcard-desc">شاشة واحدة<br>بدون نظارة</div>
     </div>
-    <div class="mcard mc-v" onclick="startMode('vr')">
-      <div class="micon">🥽</div>
-      <div class="mname">VR</div>
-      <div class="mdesc">للنظارة</div>
+    <div class="mcard mv" onclick="startMode('vr')">
+      <div class="mcard-icon">🥽</div>
+      <div class="mcard-name">VR</div>
+      <div class="mcard-desc">شاشتين<br>للنظارة</div>
     </div>
   </div>
 </div>
 
-<button id="switchBtn" onclick="showMode()">🔄 غيّر الوضع</button>
+<button id="swBtn" onclick="showMode()">🔄 غيّر الوضع</button>
 
-<a-scene id="scene" vr-mode-ui="enabled:true;cardboardModeEnabled:true" device-orientation-permission-ui="enabled:true" style="display:none">
+<a-scene id="scene"
+  vr-mode-ui="enabled:true;cardboardModeEnabled:true"
+  device-orientation-permission-ui="enabled:true"
+  style="display:none">
   <a-assets>
-    <video id="v360" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
+    <video id="v360"  crossorigin="anonymous" loop playsinline webkit-playsinline></video>
     <video id="vFlat" crossorigin="anonymous" loop playsinline webkit-playsinline></video>
   </a-assets>
-  <a-videosphere id="vs" src="#v360" visible="false"></a-videosphere>
-  <a-video id="vp" src="#vFlat" width="6" height="3.4" position="0 1.6 -4" visible="false"></a-video>
-  <a-sky id="is" src="" visible="false" radius="100"></a-sky>
-  <a-image id="ip" src="" width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
+  <a-videosphere id="vs"  src="#v360"  visible="false"></a-videosphere>
+  <a-video       id="vp"  src="#vFlat" width="6" height="3.4" position="0 1.6 -4" visible="false"></a-video>
+  <a-sky         id="sky" src=""       visible="false" radius="100"></a-sky>
+  <a-image       id="img" src=""       width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
   <a-entity id="rig" rotation="0 0 0">
     <a-camera look-controls wasd-controls="enabled:false">
-      <a-cursor color="#f59e0b" radius="0.004" geometry="primitive:ring;radiusInner:0.003;radiusOuter:0.007" material="color:#f59e0b;shader:flat" id="cur"></a-cursor>
+      <a-cursor id="cur" color="#fbbf24" radius="0.004"
+        geometry="primitive:ring;radiusInner:0.003;radiusOuter:0.007"
+        material="color:#fbbf24;shader:flat"></a-cursor>
     </a-camera>
   </a-entity>
 </a-scene>
 
 <script>
-var v360=document.getElementById('v360');
-var vFlat=document.getElementById('vFlat');
-var scene=document.getElementById('scene');
-var rig=document.getElementById('rig');
-var vs=document.getElementById('vs');
-var vp=document.getElementById('vp');
-var is_=document.getElementById('is');
-var ip=document.getElementById('ip');
-var socket=io();
+var socket = io();
+var v360  = document.getElementById('v360');
+var vFlat = document.getElementById('vFlat');
+var scene = document.getElementById('scene');
+var rig   = document.getElementById('rig');
+var vs    = document.getElementById('vs');
+var vp    = document.getElementById('vp');
+var sky   = document.getElementById('sky');
+var img   = document.getElementById('img');
+var bgA   = new Audio(); bgA.crossOrigin = 'anonymous';
 
-var started=false, pending=null, mode=null;
-var bgAudio=new Audio(); bgAudio.crossOrigin='anonymous';
+var started = false, curMode = null, pending = null;
 
-// اسم الجهاز
-var name=/iPhone|iPad/i.test(navigator.userAgent)?'📱 iPhone':
-         /Android/i.test(navigator.userAgent)?'📱 Android':
-         /Windows/i.test(navigator.userAgent)?'💻 Windows':'📟 جهاز';
+// device name
+var dname = /iPhone|iPad/i.test(navigator.userAgent) ? '📱 iPhone' :
+            /Android/i.test(navigator.userAgent)      ? '📱 Android' :
+            /Windows/i.test(navigator.userAgent)      ? '💻 Windows' : '📟 جهاز';
 
-// تسجيل كـ viewer — كرر كل 3 ثواني لحد ما يدخل
-var joinInt=setInterval(function(){
-  if(!started) socket.emit('viewer',{name:name});
-},3000);
-socket.emit('viewer',{name:name});
+// iOS cursor off
+if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+  var cur = document.getElementById('cur');
+  if (cur) cur.setAttribute('visible', false);
+}
 
-socket.on('connect',function(){
-  socket.emit('viewer',{name:name});
-});
+// wake lock
+var wl = null;
+function reqWL() {
+  try { if ('wakeLock' in navigator) navigator.wakeLock.request('screen').then(function(l){ wl=l; }); } catch(e){}
+}
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') reqWL(); });
+reqWL();
 
-socket.on('joinOk',function(data){
-  if(data&&data.allow){
+// join — retry every 3s until welcomed
+var joinInt = setInterval(function() {
+  if (!started) socket.emit('join-viewer', { name: dname });
+}, 3000);
+socket.emit('join-viewer', { name: dname });
+socket.on('connect', function() { socket.emit('join-viewer', { name: dname }); });
+
+socket.on('welcome', function(d) {
+  if (d.open) {
     clearInterval(joinInt);
-    started=true;
-    document.getElementById('wait').style.display='none';
+    started = true;
+    document.getElementById('wait').style.display = 'none';
     showMode();
   }
 });
 
-socket.on('go',function(){
+socket.on('room-open', function() {
   clearInterval(joinInt);
-  started=true;
-  document.getElementById('wait').style.display='none';
+  started = true;
+  document.getElementById('wait').style.display = 'none';
   showMode();
 });
 
-socket.on('stop',function(){
-  v360.pause(); vFlat.pause(); bgAudio.pause();
-  scene.style.display='none';
-  document.getElementById('switchBtn').style.display='none';
-  document.getElementById('mode').style.display='none';
-  document.getElementById('wait').style.display='flex';
-  started=false; mode=null; pending=null;
-  socket.emit('status',{s:'انتظار'});
+socket.on('room-closed', function() {
+  v360.pause(); vFlat.pause(); bgA.pause();
+  scene.style.display = 'none';
+  document.getElementById('swBtn').style.display   = 'none';
+  document.getElementById('mode').style.display    = 'none';
+  document.getElementById('wait').style.display    = 'flex';
+  started = false; curMode = null; pending = null;
+  socket.emit('viewer-status', { s: 'انتظار' });
 });
 
-socket.on('kicked',function(){window.location.href='about:blank';});
+socket.on('kicked', function() { window.location.href = 'about:blank'; });
 
-// Wake Lock
-var wl=null;
-function reqWL(){try{if('wakeLock' in navigator)navigator.wakeLock.request('screen').then(function(l){wl=l;});}catch(e){}}
-document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')reqWL();});
-reqWL();
-
-// iOS cursor fix
-if(/iPhone|iPad|iPod/i.test(navigator.userAgent)){
-  var cur=document.getElementById('cur');
-  if(cur) cur.setAttribute('visible',false);
+function showMode() {
+  scene.style.display = 'none';
+  document.getElementById('swBtn').style.display  = 'none';
+  document.getElementById('wait').style.display   = 'none';
+  document.getElementById('mode').style.display   = 'flex';
+  socket.emit('viewer-status', { s: 'اختيار وضع' });
 }
 
-function showMode(){
-  scene.style.display='none';
-  document.getElementById('switchBtn').style.display='none';
-  document.getElementById('wait').style.display='none';
-  document.getElementById('mode').style.display='flex';
-  socket.emit('status',{s:'اختيار وضع'});
+function startMode(m) {
+  curMode = m;
+  document.getElementById('mode').style.display  = 'none';
+  scene.style.display = 'block';
+  document.getElementById('swBtn').style.display = 'block';
+  socket.emit('viewer-status', { s: m === 'vr' ? 'VR' : 'عادي' });
+  if (m === 'vr') scene.enterVR();
+  if (pending) applyMedia(pending);
 }
 
-function startMode(m){
-  mode=m;
-  document.getElementById('mode').style.display='none';
-  scene.style.display='block';
-  document.getElementById('switchBtn').style.display='block';
-  socket.emit('status',{s:m==='vr'?'VR':'عادي'});
-  if(m==='vr') scene.enterVR();
-  if(pending) apply(pending);
-}
+scene.addEventListener('exit-vr', function() { curMode = 'normal'; });
 
-scene.addEventListener('exit-vr',function(){mode='normal';});
-
-function hideAll(){
+function hideAll() {
   vs.setAttribute('visible',false); vp.setAttribute('visible',false);
-  is_.setAttribute('visible',false); ip.setAttribute('visible',false);
+  sky.setAttribute('visible',false); img.setAttribute('visible',false);
   v360.pause(); vFlat.pause();
 }
 
-function apply(d){
+function applyMedia(d) {
   hideAll();
-  rig.setAttribute('rotation',{x:0,y:d.degree||0,z:0});
-  if(d.type==='video'){
-    if(v360.src!==d.url){v360.src=d.url;v360.load();}
-    vs.setAttribute('visible',true);
-    v360.volume=Math.max(0,Math.min(1,d.volume||1)); v360.muted=d.muted||false;
-    if(d.playing&&d.startedAt){
-      v360.currentTime=Math.max(0,(Date.now()-d.startedAt)/1000);
-      v360.play().catch(function(){v360.muted=true;v360.play();});
-    } else {if(d.pausedAt)v360.currentTime=d.pausedAt;v360.pause();}
-    v360.addEventListener('loadedmetadata',function(){
-      if(v360.duration&&!isNaN(v360.duration)) socket.emit('dur',{duration:v360.duration});
-    },{once:true});
-  } else if(d.type==='videoFlat'){
-    if(vFlat.src!==d.url){vFlat.src=d.url;vFlat.load();}
-    vp.setAttribute('visible',true);
-    vFlat.volume=Math.max(0,Math.min(1,d.volume||1)); vFlat.muted=d.muted||false;
-    if(d.playing&&d.startedAt){
-      vFlat.currentTime=Math.max(0,(Date.now()-d.startedAt)/1000);
-      vFlat.play().catch(function(){vFlat.muted=true;vFlat.play();});
-    } else {if(d.pausedAt)vFlat.currentTime=d.pausedAt;vFlat.pause();}
-    vFlat.addEventListener('loadedmetadata',function(){
-      if(vFlat.duration&&!isNaN(vFlat.duration)) socket.emit('dur',{duration:vFlat.duration});
-    },{once:true});
-  } else if(d.type==='image360'){
-    is_.setAttribute('src',d.url); is_.setAttribute('visible',true);
-  } else if(d.type==='image'){
-    ip.setAttribute('src',d.url); ip.setAttribute('visible',true);
+  rig.setAttribute('rotation', { x:0, y:d.degree||0, z:0 });
+  if (d.type === 'video') {
+    if (v360.src !== d.url) { v360.src = d.url; v360.load(); }
+    vs.setAttribute('visible', true);
+    v360.volume = Math.max(0, Math.min(1, d.volume||1));
+    v360.muted  = d.muted || false;
+    if (d.playing && d.startedAt) {
+      v360.currentTime = Math.max(0, (Date.now() - d.startedAt) / 1000);
+      v360.play().catch(function(){ v360.muted = true; v360.play(); });
+    } else { if (d.pausedAt) v360.currentTime = d.pausedAt; v360.pause(); }
+    v360.addEventListener('loadedmetadata', function(){
+      if (v360.duration && !isNaN(v360.duration))
+        socket.emit('cmd-dur', { duration: v360.duration });
+    }, { once:true });
+  } else if (d.type === 'videoFlat') {
+    if (vFlat.src !== d.url) { vFlat.src = d.url; vFlat.load(); }
+    vp.setAttribute('visible', true);
+    vFlat.volume = Math.max(0, Math.min(1, d.volume||1));
+    vFlat.muted  = d.muted || false;
+    if (d.playing && d.startedAt) {
+      vFlat.currentTime = Math.max(0, (Date.now() - d.startedAt) / 1000);
+      vFlat.play().catch(function(){ vFlat.muted = true; vFlat.play(); });
+    } else { if (d.pausedAt) vFlat.currentTime = d.pausedAt; vFlat.pause(); }
+    vFlat.addEventListener('loadedmetadata', function(){
+      if (vFlat.duration && !isNaN(vFlat.duration))
+        socket.emit('cmd-dur', { duration: vFlat.duration });
+    }, { once:true });
+  } else if (d.type === 'image360') {
+    sky.setAttribute('src', d.url); sky.setAttribute('visible', true);
+  } else if (d.type === 'image') {
+    img.setAttribute('src', d.url); img.setAttribute('visible', true);
   }
 }
 
-function handle(d){
-  if(!d.url)return;
-  pending=d;
-  if(started&&mode) apply(d);
+function handleMedia(d) {
+  if (!d.url) return;
+  pending = d;
+  if (started && curMode) applyMedia(d);
 }
 
-socket.on('state',handle);
-socket.on('vol',function(d){
-  [v360,vFlat].forEach(function(v){v.volume=Math.max(0,Math.min(1,d.v||1));v.muted=d.m||false;});
+socket.on('media', handleMedia);
+socket.on('vol', function(d) {
+  [v360, vFlat].forEach(function(v){ v.volume = Math.max(0,Math.min(1,d.v||1)); v.muted = d.m||false; });
 });
 
-socket.on('audio',function(d){
-  if(!d.url&&!d.playing){bgAudio.pause();return;}
-  if(d.url&&bgAudio.src!==d.url){
-    bgAudio.src=d.url;
-    bgAudio.addEventListener('loadedmetadata',function(){
-      if(bgAudio.duration&&!isNaN(bgAudio.duration)) socket.emit('adur',{duration:bgAudio.duration});
-    },{once:true});
+socket.on('audio', function(d) {
+  if (d.stop) { bgA.pause(); bgA.currentTime = 0; return; }
+  if (!d.url && !d.playing) { bgA.pause(); return; }
+  if (d.url && bgA.src !== d.url) {
+    bgA.src = d.url;
+    bgA.addEventListener('loadedmetadata', function(){
+      if (bgA.duration && !isNaN(bgA.duration))
+        socket.emit('audio-dur', { duration: bgA.duration });
+    }, { once:true });
   }
-  if(d.stop){bgAudio.pause();bgAudio.currentTime=0;return;}
-  if(d.playing&&d.startedAt){
-    var pos=(d.pausedAt||0)+(Date.now()-d.serverTime)/1000;
-    bgAudio.currentTime=pos>0?pos:0;
-    bgAudio.volume=d.volume||1;
-    bgAudio.play().catch(function(){});
+  if (d.playing && d.startedAt) {
+    var pos = (d.pausedAt||0) + (Date.now() - d.serverTime) / 1000;
+    bgA.currentTime = pos > 0 ? pos : 0;
+    bgA.volume = d.volume || 1;
+    bgA.play().catch(function(){});
   } else {
-    bgAudio.pause();
-    if(d.pausedAt!==undefined) bgAudio.currentTime=d.pausedAt;
+    bgA.pause();
+    if (d.pausedAt !== undefined) bgA.currentTime = d.pausedAt;
   }
 });
-socket.on('avol',function(d){if(d.v!==undefined)bgAudio.volume=d.v;});
+socket.on('avol', function(d) { if (d.v !== undefined) bgA.volume = d.v; });
 </script>
 </body>
 </html>
