@@ -192,7 +192,7 @@ let playing=false, startedAt=null, pausedAt=0, dur=0, dragging=false;
 let aPlaying=false, aStartedAt=null, aPausedAt=0, aDur=0, aDragging=false;
 let selType='video', selDeg=0;
 let timer=null, aTimer=null;
-let plActive=false, plTimer=null;
+let plActive=false, plTimer=null, plIdx=0;
 let joinAllowed=false;
 
 const TL={video:'360°',videoFlat:'عادي',image:'صورة',image360:'ص360'};
@@ -364,14 +364,22 @@ function renderML(){
       '<div class="row"><span class="lbl">🧭</span><input type="range" id="ei_deg" min="0" max="359" value="'+(m.degree||0)+'" style="flex:1"><span id="ei_dv" style="font-size:.65rem;color:#f59e0b">'+(m.degree||0)+'°</span></div>'+
       '<div class="row"><button class="btn btn-green" onclick="saveEdit('+i+')" style="flex:1">💾 حفظ</button><button class="btn btn-gray" onclick="editIdx=-1;renderML()" style="flex:1">✕ إلغاء</button></div>'+
     '</div>';
+    var inPL=m.inPL?'✅':'⬜';
     return '<div class="item'+(i===ci?' active':'')+'" onclick="ci='+i+';renderML()">'+
       '<div style="font-size:.8rem">'+({video:'🌐',videoFlat:'🎬',image:'🖼',image360:'🌐'}[m.type])+'</div>'+
       '<div style="flex:1;min-width:0"><div class="item-name">'+m.name+'</div><div class="item-meta">'+TL[m.type]+' • '+(m.degree||0)+'°</div></div>'+
-      '<div class="item-acts"><button class="ib ib-play" onclick="event.stopPropagation();playM('+i+')">▶</button>'+
+      '<div class="item-acts">'+
+      '<button class="ib" style="background:'+(m.inPL?'#14b8a6':'#374151')+';color:#fff;font-size:.7rem" title="أضف للبلاي ليست" onclick="event.stopPropagation();togglePLItem('+i+')">'+inPL+'</button>'+
+      '<button class="ib ib-play" onclick="event.stopPropagation();playM('+i+')">▶</button>'+
       '<button class="ib ib-edit" onclick="event.stopPropagation();editIdx='+i+';renderML()">✏</button>'+
       '<button class="ib ib-del" onclick="event.stopPropagation();delM('+i+')">✕</button></div>'+
     '</div>';
   }).join('');
+}
+function togglePLItem(i){
+  ml[i].inPL=!ml[i].inPL; saveML(); renderML();
+  var cnt=ml.filter(function(m){return m.inPL;}).length;
+  st(ml[i].inPL?'✅ أُضيف للبلاي ليست':'⬜ أُزيل من البلاي ليست');
 }
 function saveEdit(i){
   var n=document.getElementById('ei_name').value.trim();
@@ -432,32 +440,36 @@ function playAItem(i){
 // بلاي ليست
 function togglePL(){plActive?plStop():plStart();}
 function plStart(){
-  if(!ml.length)return st('القائمة فاضية!');
-  plActive=true; ci=0;
+  var items=ml.filter(function(m){return m.inPL;});
+  if(!items.length)return st('مفيش عناصر محددة للبلاي ليست! اضغط ✅ على العناصر اللي عايزها');
+  plActive=true; plIdx=0;
   document.getElementById('plBtn').textContent='⏹ وقّف البلاي ليست';
   document.getElementById('plBtn').className='btn btn-red';
   plPlayCurrent();
 }
 function plStop(){
-  plActive=false; clearTimeout(plTimer);
+  plActive=false; clearTimeout(plTimer); plIdx=0;
   document.getElementById('plBtn').textContent='▶▶ البلاي ليست';
   document.getElementById('plBtn').className='btn btn-teal';
   st('⏹ البلاي ليست وقفت');
 }
 function plPlayCurrent(){
-  if(!plActive||!ml.length)return;
-  var m=ml[ci]; renderML();
+  if(!plActive)return;
+  var items=ml.filter(function(m){return m.inPL;});
+  if(!items.length||plIdx>=items.length){plStop();sendPause();st('✅ البلاي ليست خلصت');return;}
+  var m=items[plIdx];
+  // حدد ci في القائمة الكاملة
+  ci=ml.indexOf(m); renderML();
   var isImg=(m.type==='image'||m.type==='image360');
   playing=!isImg; pausedAt=0; startedAt=Date.now();
   socket.emit('play',{url:m.url,type:m.type,degree:m.degree||0,volume:vol/100,muted:muted});
   if(!isImg) startTimer();
-  st('▶▶ '+(ci+1)+'/'+ml.length+' — '+m.name);
+  st('▶▶ '+(plIdx+1)+'/'+items.length+' — '+m.name);
   if(isImg) plTimer=setTimeout(plNext,10000);
 }
 function plNext(){
   if(!plActive)return;
-  clearTimeout(plTimer); ci++;
-  if(ci>=ml.length){plStop();sendPause();st('✅ البلاي ليست خلصت');return;}
+  clearTimeout(plTimer); plIdx++;
   plPlayCurrent();
 }
 
