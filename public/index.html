@@ -108,6 +108,7 @@ a-scene { width:100vw; height:100vh; }
 <a-scene id="scene"
   vr-mode-ui="enabled:true;cardboardModeEnabled:true"
   device-orientation-permission-ui="enabled:true"
+  renderer="antialias:false"
   style="display:none">
   <a-assets>
     <video id="v360"  crossorigin="anonymous" loop playsinline webkit-playsinline></video>
@@ -118,7 +119,7 @@ a-scene { width:100vw; height:100vh; }
   <a-sky         id="sky" src=""       visible="false" radius="100"></a-sky>
   <a-image       id="img" src=""       width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
   <a-entity id="rig" rotation="0 0 0">
-    <a-camera look-controls wasd-controls="enabled:false">
+    <a-camera look-controls="touchEnabled:true;magicWindowTrackingEnabled:true" wasd-controls="enabled:false">
       <a-cursor id="cur" color="#fbbf24" radius="0.004"
         geometry="primitive:ring;radiusInner:0.003;radiusOuter:0.007"
         material="color:#fbbf24;shader:flat"></a-cursor>
@@ -208,6 +209,13 @@ function startMode(m) {
   scene.style.display = 'block';
   document.getElementById('swBtn').style.display = 'block';
   socket.emit('viewer-status', { s: m === 'vr' ? 'VR' : 'عادي' });
+  // طلب إذن الـ gyroscope على iOS 13+ و Android
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission().then(function(state) {
+      if (state === 'granted') { /* تمام */ }
+    }).catch(function(){});
+  }
   if (m === 'vr') scene.enterVR();
   if (pending) applyMedia(pending);
 }
