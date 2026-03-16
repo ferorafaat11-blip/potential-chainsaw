@@ -146,6 +146,10 @@ io.on('connection', function(socket) {
     io.emit('adur', d);
   });
 
+  socket.on('countdown', function(data) {
+    io.emit('countdown', { secs: data.secs });
+  });
+
   socket.on('kick-one', function(data) {
     var t = io.sockets.sockets.get(data.id);
     if (t) { t.emit('kicked'); delete viewers[data.id]; broadcast(); }
