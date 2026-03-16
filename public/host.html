@@ -79,9 +79,9 @@ select{background:#0f3460;border:1px solid #1e40af;color:#eee;padding:4px 6px;bo
     <h3>⏱ الفيديو</h3>
     <div class="timer" id="timerDisp">00:00:00</div>
     <div class="row">
-      <span class="lbl">00:00</span>
+      <span class="lbl" id="seekCur">00:00</span>
       <input type="range" id="seekSl" min="0" max="100" value="0"
-        oninput="if(dragging)updTimer((this.value/100)*dur)"
+        oninput="if(dragging){var t=(this.value/100)*dur;updTimer(t);document.getElementById('seekCur').textContent=pad(Math.floor(t/60))+':'+pad(Math.floor(t%60));}"
         onmousedown="dragging=true" ontouchstart="dragging=true"
         onmouseup="seekDrop(this.value);dragging=false" ontouchend="seekDrop(this.value);dragging=false"
         onchange="seekDrop(this.value)">
@@ -133,9 +133,9 @@ select{background:#0f3460;border:1px solid #1e40af;color:#eee;padding:4px 6px;bo
     <h3>🎵 الصوت</h3>
     <div class="timer" id="audioTimer" style="font-size:1.1rem;color:#8b5cf6">00:00:00</div>
     <div class="row">
-      <span class="lbl">00:00</span>
+      <span class="lbl" id="aSeekCur">00:00</span>
       <input type="range" id="aSeekSl" min="0" max="100" value="0"
-        oninput="if(aDragging)updATimer((this.value/100)*aDur)"
+        oninput="if(aDragging){var t=(this.value/100)*aDur;updATimer(t);document.getElementById('aSeekCur').textContent=pad(Math.floor(t/60))+':'+pad(Math.floor(t%60));}"
         onmousedown="aDragging=true" ontouchstart="aDragging=true"
         onmouseup="aSeekDrop(this.value);aDragging=false" ontouchend="aSeekDrop(this.value);aDragging=false"
         onchange="aSeekDrop(this.value)">
@@ -290,6 +290,7 @@ function startTimer(){
 function updTimer(t){
   if(t<0)t=0;
   document.getElementById('timerDisp').textContent=fmt(t);
+  document.getElementById('seekCur').textContent=pad(Math.floor(t/60)%60)+':'+pad(Math.floor(t%60));
 }
 function fmt(t){if(t<0)t=0;return pad(Math.floor(t/3600))+':'+pad(Math.floor((t%3600)/60))+':'+pad(Math.floor(t%60));}
 function pad(n){return String(n).padStart(2,'0');}
@@ -355,6 +356,7 @@ function startATimer(){
 function updATimer(t){
   if(t<0)t=0;
   document.getElementById('audioTimer').textContent=fmt(t);
+  document.getElementById('aSeekCur').textContent=pad(Math.floor(t/60)%60)+':'+pad(Math.floor(t%60));
   if(aDur>0&&!aDragging) document.getElementById('aSeekSl').value=(t/aDur)*100;
 }
 socket.on('adur',function(d){
@@ -487,17 +489,22 @@ function plStop(){
   plActive=false; clearTimeout(plTimer); plIdx=0;
   document.getElementById('plBtn').textContent='▶▶ ابدأ';
   document.getElementById('plBtn').className='btn btn-teal';
-  // وقّف الفيديو
   sendPause();
+  // وقّف الصوت لو كان شغّال مع البلاي ليست
+  if(document.getElementById('plWithAudio').checked){
+    aStop();
+  }
   st('⏹ البلاي ليست وقفت');
 }
 function plRestart(){
-  // أعد من الأول مع وقف
   plActive=false; clearTimeout(plTimer); plIdx=0;
   document.getElementById('plBtn').textContent='▶▶ ابدأ';
   document.getElementById('plBtn').className='btn btn-teal';
-  sendPause(); updTimer(0);
-  document.getElementById('seekSl').value=0;
+  sendPause();
+  if(document.getElementById('plWithAudio').checked) aStop();
+  updTimer(0); document.getElementById('seekSl').value=0;
+  st('🔁 جاهز من الأول — اضغط ابدأ');
+}
   st('🔁 جاهز من الأول — اضغط ابدأ');
 }
 function plPlayCurrent(){
