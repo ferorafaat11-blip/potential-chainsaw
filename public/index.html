@@ -177,6 +177,7 @@ reqWL();
 var joinInt = setInterval(function() {
   if (!started) socket.emit('join-viewer', { name: dname });
 }, 3000);
+// الجهاز بيتصل بدون roomId — السيرفر بيحطه في الروم المتاح
 socket.emit('join-viewer', { name: dname });
 socket.on('connect', function() { socket.emit('join-viewer', { name: dname }); });
 
@@ -207,6 +208,7 @@ socket.on('room-closed', function() {
 });
 
 socket.on('kicked', function() { window.location.href = 'about:blank'; });
+socket.on('room-deleted', function() { window.location.href = 'about:blank'; });
 
 function showMode() {
   scene.style.display = 'none';
