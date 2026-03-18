@@ -1,183 +1,316 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+
 const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer);
 
 app.use(express.static('public'));
 
-var media = { type:'video', url:'', degree:0, playing:false, startedAt:null, pausedAt:0, volume:1, muted:false };
-var audio = { url:'', playing:false, startedAt:null, pausedAt:0, volume:1 };
-var viewers = {};
-var hosts = {};
-var count = 0;
-var open = false;
+// ─── ROOMS ───
+// rooms[roomId] = { id, name, host:socketId, media, audio, viewers, open, mediaList, audioList }
+var rooms = {};
+var socketRoom = {}; // socketId -> roomId
 
-function broadcast() {
-  var list = Object.values(viewers);
-  io.emit('vlist', list);
-  io.emit('vcount', list.length);
+function makeId() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
+function getRoom(socketId) {
+  return rooms[socketRoom[socketId]];
+}
+
+function bcastRoom(roomId) {
+  var room = rooms[roomId];
+  if (!room) return;
+  var list = Object.values(room.viewers);
+  io.to(roomId).emit('vlist', list);
+  io.to(roomId).emit('vcount', list.length);
+}
+
+function defMedia() {
+  return { type:'video', url:'', degree:0, playing:false, startedAt:null, pausedAt:0, volume:1, muted:false };
+}
+function defAudio() {
+  return { url:'', playing:false, startedAt:null, pausedAt:0, volume:1 };
+}
+
+// ─── SOCKET ───
 io.on('connection', function(socket) {
 
-  socket.on('join-host', function() {
-    hosts[socket.id] = true;
-    delete viewers[socket.id];
-    broadcast();
+  // ── HOST: إنشاء روم ──
+  socket.on('create-room', function(data) {
+    var id = makeId();
+    rooms[id] = {
+      id: id,
+      name: data.name || 'الروم',
+      host: socket.id,
+      media: defMedia(),
+      audio: defAudio(),
+      viewers: {},
+      vcount: 0,
+      open: false,
+      mediaList: data.mediaList || [],
+      audioList: data.audioList || []
+    };
+    socketRoom[socket.id] = id;
+    socket.join(id);
+    socket.emit('room-created', { id: id, name: rooms[id].name });
   });
 
+  // ── HOST: استرجاع روم موجود بعد refresh ──
+  socket.on('rejoin-host', function(data) {
+    var room = rooms[data.roomId];
+    if (!room) { socket.emit('room-not-found'); return; }
+    room.host = socket.id;
+    socketRoom[socket.id] = data.roomId;
+    socket.join(data.roomId);
+    socket.emit('room-rejoined', {
+      id: room.id, name: room.name,
+      media: room.media, audio: room.audio,
+      open: room.open,
+      mediaList: room.mediaList,
+      audioList: room.audioList
+    });
+    bcastRoom(data.roomId);
+  });
+
+  // ── HOST: حذف روم ──
+  socket.on('delete-room', function() {
+    var room = getRoom(socket.id);
+    if (!room) return;
+    var rid = room.id;
+    io.to(rid).emit('room-deleted');
+    io.socketsLeave(rid);
+    // امسح كل الـ viewers من socketRoom
+    Object.keys(room.viewers).forEach(function(vid) { delete socketRoom[vid]; });
+    delete socketRoom[socket.id];
+    delete rooms[rid];
+  });
+
+  // ── HOST: حفظ القوائم ──
+  socket.on('save-lists', function(data) {
+    var room = getRoom(socket.id);
+    if (!room) return;
+    if (data.mediaList) room.mediaList = data.mediaList;
+    if (data.audioList) room.audioList = data.audioList;
+  });
+
+  // ── VIEWER: دخول روم ──
   socket.on('join-viewer', function(data) {
-    if (hosts[socket.id]) return;
-    if (!viewers[socket.id]) {
-      count++;
-      viewers[socket.id] = {
+    // لو مفيش roomId — اتصل بأول روم موجود
+    var rid = data.roomId;
+    if (!rid) {
+      var keys = Object.keys(rooms);
+      if (keys.length > 0) rid = keys[0];
+    }
+    var room = rooms[rid];
+    if (!room) { socket.emit('room-not-found'); return; }
+    socketRoom[socket.id] = rid;
+    socket.join(rid);
+    if (!room.viewers[socket.id]) {
+      room.vcount++;
+      room.viewers[socket.id] = {
         id: socket.id,
-        num: count,
-        name: (data && data.name) ? data.name : 'جهاز ' + count,
+        num: room.vcount,
+        name: data.name || ('جهاز ' + room.vcount),
         status: 'انتظار'
       };
-      broadcast();
+      bcastRoom(rid);
     }
-    socket.emit('welcome', { open: open, media: media, audio: audio, serverTime: Date.now() });
+    socket.emit('welcome', {
+      open: room.open,
+      media: room.media,
+      audio: room.audio,
+      serverTime: Date.now()
+    });
   });
 
+  // ── SET OPEN ──
   socket.on('set-open', function(data) {
-    hosts[socket.id] = true;
-    delete viewers[socket.id];
-    open = data.open;
-    var ids = Object.keys(viewers);
-    for (var i = 0; i < ids.length; i++) {
-      var s = io.sockets.sockets.get(ids[i]);
-      if (open) {
+    var room = getRoom(socket.id);
+    if (!room) return;
+    room.open = data.open;
+    var ids = Object.keys(room.viewers);
+    ids.forEach(function(vid) {
+      var s = io.sockets.sockets.get(vid);
+      if (room.open) {
         if (s) s.emit('room-open');
-        if (viewers[ids[i]]) viewers[ids[i]].status = 'اختيار وضع';
+        if (room.viewers[vid]) room.viewers[vid].status = 'اختيار وضع';
       } else {
         if (s) s.emit('room-closed');
-        if (viewers[ids[i]]) viewers[ids[i]].status = 'انتظار';
+        if (room.viewers[vid]) room.viewers[vid].status = 'انتظار';
       }
-    }
-    broadcast();
-    socket.emit('open-ok', { open: open });
+    });
+    bcastRoom(room.id);
+    socket.emit('open-ok', { open: room.open });
   });
 
+  // ── RESTART SESSION ──
+  socket.on('restart-session', function() {
+    var room = getRoom(socket.id);
+    if (!room) return;
+    Object.keys(room.viewers).forEach(function(vid) {
+      var s = io.sockets.sockets.get(vid);
+      if (s) s.emit('room-open');
+      if (room.viewers[vid]) room.viewers[vid].status = 'اختيار وضع';
+    });
+    bcastRoom(room.id);
+  });
+
+  // ── MEDIA COMMANDS ──
   socket.on('cmd-play', function(data) {
-    media.url     = data.url     || media.url;
-    media.type    = data.type    || media.type;
-    media.degree  = data.degree  !== undefined ? data.degree  : media.degree;
-    media.volume  = data.volume  !== undefined ? data.volume  : media.volume;
-    media.muted   = data.muted   !== undefined ? data.muted   : media.muted;
-    media.playing   = true;
-    media.pausedAt  = 0;
-    media.startedAt = Date.now();
-    io.emit('media', Object.assign({}, media, { serverTime: Date.now() }));
+    var room = getRoom(socket.id);
+    if (!room) return;
+    var m = room.media;
+    if (data.url)    m.url    = data.url;
+    if (data.type)   m.type   = data.type;
+    if (data.degree  !== undefined) m.degree  = data.degree;
+    if (data.volume  !== undefined) m.volume  = data.volume;
+    if (data.muted   !== undefined) m.muted   = data.muted;
+    m.playing = true; m.pausedAt = 0; m.startedAt = Date.now();
+    io.to(room.id).emit('media', Object.assign({}, m, { serverTime: Date.now() }));
   });
 
   socket.on('cmd-pause', function() {
-    if (media.startedAt) media.pausedAt = (Date.now() - media.startedAt) / 1000;
-    media.playing = false;
-    io.emit('media', Object.assign({}, media, { serverTime: Date.now() }));
+    var room = getRoom(socket.id);
+    if (!room) return;
+    var m = room.media;
+    if (m.startedAt) m.pausedAt = (Date.now() - m.startedAt) / 1000;
+    m.playing = false;
+    io.to(room.id).emit('media', Object.assign({}, m, { serverTime: Date.now() }));
   });
 
   socket.on('cmd-seek', function(data) {
-    media.pausedAt  = data.t;
-    media.startedAt = Date.now() - (data.t * 1000);
-    io.emit('media', Object.assign({}, media, { serverTime: Date.now() }));
+    var room = getRoom(socket.id);
+    if (!room) return;
+    var m = room.media;
+    m.pausedAt = data.t;
+    m.startedAt = Date.now() - (data.t * 1000);
+    io.to(room.id).emit('media', Object.assign({}, m, { serverTime: Date.now() }));
   });
 
   socket.on('cmd-vol', function(data) {
-    media.volume = data.v !== undefined ? data.v : media.volume;
-    media.muted  = data.m !== undefined ? data.m : media.muted;
-    io.emit('vol', { v: media.volume, m: media.muted });
+    var room = getRoom(socket.id);
+    if (!room) return;
+    var m = room.media;
+    if (data.v !== undefined) m.volume = data.v;
+    if (data.m !== undefined) m.muted  = data.m;
+    io.to(room.id).emit('vol', { v: m.volume, m: m.muted });
   });
 
   socket.on('cmd-sync', function() {
-    io.emit('media', Object.assign({}, media, { serverTime: Date.now() }));
+    var room = getRoom(socket.id);
+    if (!room) return;
+    io.to(room.id).emit('media', Object.assign({}, room.media, { serverTime: Date.now() }));
   });
 
   socket.on('cmd-dur', function(d) {
-    io.emit('dur', d);
+    var room = getRoom(socket.id);
+    if (!room) return;
+    io.to(room.id).emit('dur', d);
   });
 
+  // ── AUDIO COMMANDS ──
   socket.on('audio-play', function(data) {
-    audio.url       = data.url   || audio.url;
-    audio.volume    = data.v     !== undefined ? data.v : audio.volume;
-    audio.playing   = true;
-    audio.pausedAt  = 0;
-    audio.startedAt = Date.now();
-    io.emit('audio', Object.assign({}, audio, { serverTime: Date.now() }));
+    var room = getRoom(socket.id);
+    if (!room) return;
+    var a = room.audio;
+    if (data.url) a.url = data.url;
+    if (data.v !== undefined) a.volume = data.v;
+    a.playing = true; a.pausedAt = 0; a.startedAt = Date.now();
+    io.to(room.id).emit('audio', Object.assign({}, a, { serverTime: Date.now() }));
   });
 
   socket.on('audio-pause', function() {
-    if (audio.startedAt) audio.pausedAt = (Date.now() - audio.startedAt) / 1000;
-    audio.playing = false;
-    io.emit('audio', Object.assign({}, audio, { serverTime: Date.now() }));
+    var room = getRoom(socket.id);
+    if (!room) return;
+    var a = room.audio;
+    if (a.startedAt) a.pausedAt = (Date.now() - a.startedAt) / 1000;
+    a.playing = false;
+    io.to(room.id).emit('audio', Object.assign({}, a, { serverTime: Date.now() }));
   });
 
   socket.on('audio-restart', function(data) {
-    audio.url       = data.url || audio.url;
-    audio.volume    = data.v   !== undefined ? data.v : audio.volume;
-    audio.playing   = true;
-    audio.pausedAt  = 0;
-    audio.startedAt = Date.now();
-    io.emit('audio', Object.assign({}, audio, { serverTime: Date.now() }));
+    var room = getRoom(socket.id);
+    if (!room) return;
+    var a = room.audio;
+    if (data && data.url) a.url = data.url;
+    if (data && data.v !== undefined) a.volume = data.v;
+    a.playing = true; a.pausedAt = 0; a.startedAt = Date.now();
+    io.to(room.id).emit('audio', Object.assign({}, a, { serverTime: Date.now() }));
   });
 
   socket.on('audio-stop', function() {
-    audio.playing   = false;
-    audio.pausedAt  = 0;
-    audio.startedAt = null;
-    io.emit('audio', { playing: false, stop: true });
+    var room = getRoom(socket.id);
+    if (!room) return;
+    var a = room.audio;
+    a.playing = false; a.pausedAt = 0; a.startedAt = null;
+    io.to(room.id).emit('audio', { playing: false, stop: true });
   });
 
   socket.on('audio-seek', function(data) {
-    audio.pausedAt  = data.t;
-    audio.startedAt = Date.now() - (data.t * 1000);
-    io.emit('audio', Object.assign({}, audio, { serverTime: Date.now() }));
+    var room = getRoom(socket.id);
+    if (!room) return;
+    var a = room.audio;
+    a.pausedAt = data.t; a.startedAt = Date.now() - (data.t * 1000);
+    io.to(room.id).emit('audio', Object.assign({}, a, { serverTime: Date.now() }));
   });
 
   socket.on('audio-vol', function(data) {
-    audio.volume = data.v !== undefined ? data.v : audio.volume;
-    io.emit('avol', { v: audio.volume });
+    var room = getRoom(socket.id);
+    if (!room) return;
+    if (data.v !== undefined) room.audio.volume = data.v;
+    io.to(room.id).emit('avol', { v: room.audio.volume });
   });
 
   socket.on('audio-dur', function(d) {
-    io.emit('adur', d);
+    var room = getRoom(socket.id);
+    if (!room) return;
+    io.to(room.id).emit('adur', d);
   });
 
-  socket.on('restart-session', function() {
-    // ابعت الأجهزة لشاشة الاختيار من غير ما تمسح حاجة
-    var ids = Object.keys(viewers);
-    for (var i = 0; i < ids.length; i++) {
-      var s = io.sockets.sockets.get(ids[i]);
-      if (s) s.emit('room-open');
-      if (viewers[ids[i]]) viewers[ids[i]].status = 'اختيار وضع';
-    }
-    bcast();
-  });
-
-  socket.on('countdown', function(data) {
-    io.emit('countdown', { secs: data.secs });
-  });
-
+  // ── KICK ──
   socket.on('kick-one', function(data) {
+    var room = getRoom(socket.id);
+    if (!room) return;
     var t = io.sockets.sockets.get(data.id);
-    if (t) { t.emit('kicked'); delete viewers[data.id]; broadcast(); }
+    if (t) { t.emit('kicked'); delete room.viewers[data.id]; delete socketRoom[data.id]; bcastRoom(room.id); }
   });
 
   socket.on('kick-all', function() {
-    io.emit('kicked');
+    var room = getRoom(socket.id);
+    if (!room) return;
+    io.to(room.id).emit('kicked');
+    Object.keys(room.viewers).forEach(function(vid) { delete socketRoom[vid]; });
+    room.viewers = {};
+    bcastRoom(room.id);
+  });
+
+  socket.on('countdown', function(data) {
+    var room = getRoom(socket.id);
+    if (!room) return;
+    io.to(room.id).emit('countdown', { secs: data.secs });
   });
 
   socket.on('viewer-status', function(data) {
-    if (viewers[socket.id]) { viewers[socket.id].status = data.s; broadcast(); }
+    var room = getRoom(socket.id);
+    if (!room) return;
+    if (room.viewers[socket.id]) { room.viewers[socket.id].status = data.s; bcastRoom(room.id); }
   });
 
   socket.on('disconnect', function() {
-    delete viewers[socket.id];
-    delete hosts[socket.id];
-    broadcast();
+    var rid = socketRoom[socket.id];
+    if (!rid || !rooms[rid]) { delete socketRoom[socket.id]; return; }
+    var room = rooms[rid];
+    if (room.host === socket.id) {
+      // الهوست اتقطع — الروم لسه موجود لحد ما يرجع
+    } else {
+      delete room.viewers[socket.id];
+      bcastRoom(rid);
+    }
+    delete socketRoom[socket.id];
   });
 
 });
