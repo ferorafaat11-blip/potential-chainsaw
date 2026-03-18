@@ -3,734 +3,673 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VR Control</title>
+<title>VR Host</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-:root {
-  --bg: #0d1117;
-  --s1: #161b22;
-  --s2: #21262d;
-  --s3: #30363d;
-  --tx: #e6edf3;
-  --mu: #8b949e;
-  --ac: #f78166;
-  --gr: #3fb950;
-  --bl: #58a6ff;
-  --pu: #bc8cff;
-  --ye: #e3b341;
-  --te: #39d353;
-  --br: #30363d;
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0d1117;--s1:#161b22;--s2:#21262d;--s3:#30363d;
+  --tx:#e6edf3;--mu:#8b949e;
+  --gr:#3fb950;--rd:#f85149;--bl:#58a6ff;--pu:#bc8cff;--ye:#e3b341;--te:#39d353;
+  --br:#30363d;
 }
-
-body {
-  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-  background: var(--bg);
-  color: var(--tx);
-  direction: rtl;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* ── HEADER ── */
-.hdr {
-  background: var(--s1);
-  border-bottom: 1px solid var(--br);
-  padding: 8px 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-}
-.hdr-logo { font-size: 1.1rem; font-weight: 700; color: var(--ac); letter-spacing: 1px; }
-.hdr-chip {
-  background: var(--s2);
-  border: 1px solid var(--br);
-  border-radius: 20px;
-  padding: 3px 10px;
-  font-size: .72rem;
-  color: var(--mu);
-}
-.hdr-chip span { color: var(--tx); font-weight: 600; }
-.hdr-right { margin-right: auto; display: flex; gap: 6px; }
-
-/* ── BUTTONS ── */
-.btn {
-  padding: 5px 12px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: .78rem;
-  font-weight: 600;
-  transition: opacity .15s;
-  white-space: nowrap;
-}
-.btn:active { opacity: .7; }
-.b-green  { background: rgba(63,185,80,.15);  border-color: rgba(63,185,80,.4);  color: var(--gr); }
-.b-red    { background: rgba(248,81,73,.15);   border-color: rgba(248,81,73,.4);   color: #f85149; }
-.b-blue   { background: rgba(88,166,255,.12);  border-color: rgba(88,166,255,.4);  color: var(--bl); }
-.b-yellow { background: rgba(227,179,65,.12);  border-color: rgba(227,179,65,.4);  color: var(--ye); }
-.b-purple { background: rgba(188,140,255,.12); border-color: rgba(188,140,255,.4); color: var(--pu); }
-.b-teal   { background: rgba(57,211,83,.1);    border-color: rgba(57,211,83,.35);  color: var(--te); }
-.b-gray   { background: var(--s2);             border-color: var(--br);            color: var(--mu); }
-.b-off    { background: var(--s2);             border-color: var(--br);            color: var(--mu); }
-.b-on     { background: rgba(63,185,80,.2);    border-color: rgba(63,185,80,.5);   color: var(--gr); }
-
-/* ── LAYOUT ── */
-.main {
-  display: grid;
-  grid-template-columns: 1fr 1fr 200px;
-  gap: 8px;
-  padding: 8px;
-  flex: 1;
-  overflow: hidden;
-  min-height: 0;
-}
-.col { display: flex; flex-direction: column; gap: 8px; overflow: hidden; min-height: 0; }
-
-/* ── CARD ── */
-.card {
-  background: var(--s1);
-  border: 1px solid var(--br);
-  border-radius: 8px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  flex-shrink: 0;
-}
-.card-grow { flex: 1; overflow: hidden; min-height: 0; }
-.card-title {
-  font-size: .68rem;
-  font-weight: 600;
-  color: var(--mu);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  border-bottom: 1px solid var(--br);
-  padding-bottom: 5px;
-  margin-bottom: 2px;
-  flex-shrink: 0;
-}
-
-/* ── TIMER ── */
-.timer-big { font-size: 1.8rem; font-weight: 700; font-family: monospace; color: var(--ye); letter-spacing: 3px; }
-.timer-sm  { font-size: 1rem;   font-weight: 700; font-family: monospace; color: var(--pu); letter-spacing: 2px; }
-
-/* ── SEEK ROW ── */
-.seek-row { display: flex; align-items: center; gap: 6px; }
-.seek-lbl { font-size: .65rem; color: var(--mu); font-family: monospace; min-width: 36px; }
-input[type=range] { flex: 1; accent-color: var(--ac); cursor: pointer; height: 4px; }
-
-/* ── CONTROLS ── */
-.ctrl-row { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
-.vol-row  { display: flex; gap: 6px; align-items: center; }
-.vol-lbl  { font-size: .68rem; color: var(--mu); }
-.vol-val  { font-size: .68rem; color: var(--ye); font-family: monospace; min-width: 34px; text-align: center; }
-
-/* ── INPUT ── */
-input[type=text], select {
-  width: 100%;
-  background: var(--s2);
-  border: 1px solid var(--br);
-  border-radius: 6px;
-  color: var(--tx);
-  padding: 6px 9px;
-  font-size: .78rem;
-  direction: rtl;
-}
-input[type=text]::placeholder { color: var(--mu); }
-input[type=text]:focus, select:focus { outline: none; border-color: var(--bl); }
-.input-ltr { direction: ltr; font-family: monospace; }
-
-/* ── LIST ── */
-.list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; min-height: 0; }
-.list::-webkit-scrollbar { width: 3px; }
-.list::-webkit-scrollbar-thumb { background: var(--s3); border-radius: 3px; }
-.li {
-  display: flex; align-items: center; gap: 7px;
-  padding: 6px 9px;
-  background: var(--s2);
-  border: 1px solid transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.li:hover { border-color: var(--s3); }
-.li.active { border-color: var(--ac); background: rgba(247,129,102,.06); }
-.li.in-pl  { border-color: rgba(57,211,83,.35); }
-.li-icon  { font-size: .85rem; flex-shrink: 0; }
-.li-info  { flex: 1; min-width: 0; }
-.li-name  { font-size: .78rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.li-meta  { font-size: .6rem; color: var(--mu); margin-top: 1px; }
-.li-acts  { display: flex; gap: 3px; flex-shrink: 0; }
-.ib { padding: 2px 7px; border: none; border-radius: 4px; cursor: pointer; font-size: .65rem; font-weight: 700; }
-.empty-msg { color: var(--mu); font-size: .75rem; text-align: center; padding: 14px; }
-
-/* ── ADD FORM ── */
-.add-form { border-top: 1px solid var(--br); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
-.type-row { display: flex; gap: 3px; }
-.tbtn { flex: 1; padding: 5px 3px; border: 1px solid var(--br); background: transparent; color: var(--mu); border-radius: 5px; font-size: .65rem; cursor: pointer; }
-.tbtn.sel { background: rgba(88,166,255,.15); border-color: var(--bl); color: var(--bl); }
-.dir-row { display: flex; align-items: center; gap: 4px; }
-.dir-btn { padding: 3px 7px; border: 1px solid var(--br); background: transparent; color: var(--mu); border-radius: 4px; font-size: .65rem; cursor: pointer; }
-.dir-btn:hover { border-color: var(--bl); color: var(--bl); }
-
-/* ── VIEWERS ── */
-.vitem { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-bottom: 1px solid var(--br); flex-shrink: 0; }
-.vnum  { width: 22px; height: 22px; background: var(--s2); border: 1px solid var(--br); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: .62rem; color: var(--mu); flex-shrink: 0; }
-.vname { flex: 1; font-size: .73rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vbadge { font-size: .58rem; font-weight: 700; padding: 1px 6px; border-radius: 10px; }
-.bw { background: rgba(139,148,158,.15); color: var(--mu); }
-.bc { background: rgba(227,179,65,.15);  color: var(--ye); }
-.bn { background: rgba(63,185,80,.15);   color: var(--gr); }
-.bv { background: rgba(88,166,255,.15);  color: var(--bl); }
-.vkick { padding: 2px 7px; background: rgba(248,81,73,.12); border: 1px solid rgba(248,81,73,.3); border-radius: 4px; color: #f85149; font-size: .6rem; cursor: pointer; }
-
-/* ── STATUS BAR ── */
-.sbar { padding: 5px 10px; background: var(--s1); border: 1px solid var(--br); border-radius: 6px; font-size: .7rem; color: var(--mu); flex-shrink: 0; }
-
-/* ── EDIT BOX ── */
-.edit-box { background: var(--s2); border: 1px solid var(--bl); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
-
-/* ── MOBILE ── */
-@media (max-width: 700px) {
-  body { overflow-y: auto; height: auto; }
-  .main { grid-template-columns: 1fr; height: auto; overflow: visible; }
-  .col  { overflow: visible; }
-  .card-grow { min-height: 200px; }
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--tx);direction:rtl;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.hdr{background:var(--s1);border-bottom:1px solid var(--br);padding:7px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.logo{font-size:1rem;font-weight:700;color:var(--rd)}
+.chip{background:var(--s2);border:1px solid var(--br);border-radius:20px;padding:3px 10px;font-size:.7rem;color:var(--mu)}
+.chip span{color:var(--tx);font-weight:600}
+.room-chip{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);border-radius:20px;padding:3px 10px;font-size:.7rem;color:var(--bl);cursor:pointer}
+.hdr-r{margin-right:auto;display:flex;gap:6px}
+.btn{padding:5px 11px;border:1px solid transparent;border-radius:6px;cursor:pointer;font-size:.77rem;font-weight:600;transition:opacity .15s;white-space:nowrap}
+.btn:active{opacity:.7}
+.b-gr{background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.4);color:var(--gr)}
+.b-rd{background:rgba(248,81,73,.15);border-color:rgba(248,81,73,.4);color:var(--rd)}
+.b-bl{background:rgba(88,166,255,.12);border-color:rgba(88,166,255,.4);color:var(--bl)}
+.b-ye{background:rgba(227,179,65,.12);border-color:rgba(227,179,65,.4);color:var(--ye)}
+.b-pu{background:rgba(188,140,255,.12);border-color:rgba(188,140,255,.4);color:var(--pu)}
+.b-te{background:rgba(57,211,83,.1);border-color:rgba(57,211,83,.35);color:var(--te)}
+.b-gy{background:var(--s2);border-color:var(--br);color:var(--mu)}
+.b-off{background:var(--s2);border-color:var(--br);color:var(--mu)}
+.b-on{background:rgba(63,185,80,.2);border-color:rgba(63,185,80,.5);color:var(--gr)}
+.main{display:grid;grid-template-columns:1fr 1fr 200px;gap:7px;padding:7px;flex:1;overflow:hidden;min-height:0}
+.col{display:flex;flex-direction:column;gap:7px;overflow:hidden;min-height:0}
+.card{background:var(--s1);border:1px solid var(--br);border-radius:8px;padding:9px 11px;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.card-g{flex:1;overflow:hidden;min-height:0}
+.ct{font-size:.65rem;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--br);padding-bottom:4px;margin-bottom:2px;flex-shrink:0}
+.tbig{font-size:1.7rem;font-weight:700;font-family:monospace;color:var(--ye);letter-spacing:3px}
+.tsm{font-size:1rem;font-weight:700;font-family:monospace;color:var(--pu);letter-spacing:2px}
+.sk{display:flex;align-items:center;gap:5px}
+.sl{font-size:.62rem;color:var(--mu);font-family:monospace;min-width:34px}
+input[type=range]{flex:1;accent-color:var(--rd);cursor:pointer;height:3px}
+.cr{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.vr{display:flex;gap:5px;align-items:center}
+.vl{font-size:.65rem;color:var(--mu)}
+.vv{font-size:.65rem;color:var(--ye);font-family:monospace;min-width:32px;text-align:center}
+input[type=text],input[type=number],select{width:100%;background:var(--s2);border:1px solid var(--br);border-radius:5px;color:var(--tx);padding:5px 8px;font-size:.77rem;direction:rtl}
+input[type=text]::placeholder{color:var(--mu)}
+input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--bl)}
+.ltr{direction:ltr;font-family:monospace}
+.list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;min-height:0}
+.list::-webkit-scrollbar{width:3px}
+.list::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+.li{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--s2);border:1px solid transparent;border-radius:5px;cursor:pointer;flex-shrink:0}
+.li:hover{border-color:var(--s3)}
+.li.act{border-color:var(--rd);background:rgba(248,81,73,.05)}
+.li.inpl{border-color:rgba(57,211,83,.35)}
+.li-ic{font-size:.82rem;flex-shrink:0}
+.li-inf{flex:1;min-width:0}
+.li-n{font-size:.76rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li-m{font-size:.58rem;color:var(--mu);margin-top:1px}
+.li-a{display:flex;gap:2px;flex-shrink:0}
+.ib{padding:2px 6px;border:none;border-radius:3px;cursor:pointer;font-size:.62rem;font-weight:700}
+.empty{color:var(--mu);font-size:.73rem;text-align:center;padding:12px}
+.af{border-top:1px solid var(--br);padding-top:7px;display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.tr{display:flex;gap:3px}
+.tb{flex:1;padding:4px 2px;border:1px solid var(--br);background:transparent;color:var(--mu);border-radius:4px;font-size:.62rem;cursor:pointer}
+.tb.sel{background:rgba(88,166,255,.15);border-color:var(--bl);color:var(--bl)}
+.dr{display:flex;align-items:center;gap:3px}
+.db{padding:3px 6px;border:1px solid var(--br);background:transparent;color:var(--mu);border-radius:3px;font-size:.62rem;cursor:pointer}
+.db:hover{border-color:var(--bl);color:var(--bl)}
+.vit{display:flex;align-items:center;gap:6px;padding:5px 7px;border-bottom:1px solid var(--br);flex-shrink:0}
+.vn{width:20px;height:20px;background:var(--s2);border:1px solid var(--br);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:.58rem;color:var(--mu);flex-shrink:0}
+.vna{flex:1;font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vbg{font-size:.56rem;font-weight:700;padding:1px 5px;border-radius:8px}
+.bw{background:rgba(139,148,158,.15);color:var(--mu)}.bc{background:rgba(227,179,65,.15);color:var(--ye)}.bn{background:rgba(63,185,80,.15);color:var(--gr)}.bv{background:rgba(88,166,255,.15);color:var(--bl)}
+.vk{padding:2px 6px;background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.3);border-radius:3px;color:var(--rd);font-size:.58rem;cursor:pointer}
+.sb{padding:4px 9px;background:var(--s1);border:1px solid var(--br);border-radius:5px;font-size:.68rem;color:var(--mu);flex-shrink:0}
+.eb{background:var(--s2);border:1px solid var(--bl);border-radius:5px;padding:7px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+/* share modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:var(--s1);border:1px solid var(--br);border-radius:12px;padding:24px;width:90%;max-width:380px;display:flex;flex-direction:column;gap:14px}
+.modal h3{font-size:1rem;text-align:center}
+.modal .url-box{background:var(--s2);border:1px solid var(--br);border-radius:6px;padding:10px;font-size:.8rem;word-break:break-all;color:var(--bl);text-align:center;direction:ltr}
+@media(max-width:700px){
+  body{overflow-y:auto;height:auto}
+  .main{grid-template-columns:1fr;height:auto;overflow:visible}
+  .col{overflow:visible}
+  .card-g{min-height:180px}
 }
 </style>
 </head>
 <body>
 
+<!-- SHARE MODAL -->
+<div class="modal-bg" id="shareModal">
+  <div class="modal">
+    <h3>🔗 رابط الروم</h3>
+    <div class="url-box" id="shareUrl"></div>
+    <button class="btn b-bl" style="width:100%" onclick="copyUrl()">📋 نسخ الرابط</button>
+    <button class="btn b-gy" style="width:100%" onclick="closeModal()">إغلاق</button>
+    <hr style="border-color:var(--br)">
+    <button class="btn b-rd" style="width:100%" onclick="deleteRoom()">🗑 إنهاء وحذف الروم</button>
+  </div>
+</div>
+
+
+<!-- LOBBY SCREEN -->
+<div id="lobbyScreen" style="position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center">
+  <div style="background:var(--s1);border:1px solid var(--br);border-radius:12px;padding:36px;width:90%;max-width:400px;display:flex;flex-direction:column;gap:16px;align-items:center">
+    <div style="font-size:2.5rem">🥽</div>
+    <div style="font-size:1.2rem;font-weight:700;color:var(--tx)">VR مركز التحكم</div>
+    <input type="text" id="rName" placeholder="اسم الروم (اختياري)" maxlength="30" style="width:100%">
+    <button class="btn b-gr" style="width:100%;padding:10px" onclick="doCreate()">➕ إنشاء روم جديد</button>
+    <div id="lobbyMsg" style="font-size:.78rem;color:var(--rd);display:none"></div>
+  </div>
+</div>
+
 <div class="hdr">
-  <span class="hdr-logo">🥽 VR</span>
-  <div class="hdr-chip">الأجهزة: <span id="vCount">0</span></div>
-  <div class="hdr-chip"><span id="statusPill">متوقف</span></div>
-  <div class="hdr-right">
+  <span class="logo">🥽 VR</span>
+  <div class="chip">الأجهزة: <span id="vCount">0</span></div>
+  <div class="chip"><span id="sPill">متوقف</span></div>
+  <div class="room-chip" id="roomChip" onclick="showModal()">⬜ جاري...</div>
+  <div class="hdr-r">
     <button class="btn b-off" id="openBtn" onclick="toggleOpen()">⛔ مغلق</button>
-    <button class="btn b-blue" onclick="restartSession()">🔄 إعادة الجلسة</button>
-    <button class="btn b-red" onclick="kickAll()">🚪 الكل</button>
+    <button class="btn b-bl"  onclick="restartSess()">🔄 إعادة</button>
+    <button class="btn b-rd"  onclick="kickAll()">🚪 الكل</button>
   </div>
 </div>
 
 <div class="main">
 
-<!-- COL 1 -->
+<!-- COL 1: فيديو -->
 <div class="col">
   <div class="card">
-    <div class="card-title">⏱ الفيديو</div>
-    <div class="timer-big" id="vTimer">00:00:00</div>
-    <div class="seek-row">
-      <span class="seek-lbl" id="vCur">00:00</span>
-      <input type="range" id="vSeek" min="0" max="100" value="0"
-        onmousedown="vDrag=true" ontouchstart="vDrag=true"
-        onmouseup="doVSeek(this.value);vDrag=false"
-        ontouchend="doVSeek(this.value);vDrag=false"
-        oninput="if(vDrag){var t=(this.value/100)*vDur;updVTimer(t);}">
-      <span class="seek-lbl" id="vEnd">00:00</span>
+    <div class="ct">⏱ الفيديو</div>
+    <div class="tbig" id="vT">00:00:00</div>
+    <div class="sk">
+      <span class="sl" id="vC">00:00</span>
+      <input type="range" id="vS" min="0" max="100" value="0"
+        onmousedown="vDg=true" ontouchstart="vDg=true"
+        onmouseup="doVS(this.value);vDg=false" ontouchend="doVS(this.value);vDg=false"
+        oninput="if(vDg){var t=(this.value/100)*vDr;updVT(t);}">
+      <span class="sl" id="vE">00:00</span>
     </div>
-    <div class="ctrl-row">
-      <button class="btn b-green"  onclick="cmdPlay()">▶ شغّل</button>
-      <button class="btn b-red"    onclick="cmdPause()">⏸ وقّف</button>
-      <button class="btn b-gray"   onclick="cmdReset()">⏮ أول</button>
-      <button class="btn b-yellow" onclick="cmdSync()">⚡ Sync</button>
+    <div class="cr">
+      <button class="btn b-gr" onclick="cmdPlay()">▶ شغّل</button>
+      <button class="btn b-rd" onclick="cmdPause()">⏸ وقّف</button>
+      <button class="btn b-gy" onclick="cmdReset()">⏮ أول</button>
+      <button class="btn b-ye" onclick="cmdSync()">⚡</button>
     </div>
-    <div class="vol-row">
-      <span class="vol-lbl">🔊</span>
-      <input type="range" id="vVol" min="0" max="100" value="100" oninput="setVol(this.value)">
-      <span class="vol-val" id="vVolV">100%</span>
-      <button class="btn b-gray" id="muteBtn" onclick="toggleMute()" style="padding:3px 8px">🔇</button>
+    <div class="vr">
+      <span class="vl">🔊</span>
+      <input type="range" id="vVl" min="0" max="100" value="100" oninput="setVol(this.value)">
+      <span class="vv" id="vVv">100%</span>
+      <button class="btn b-gy" id="mBtn" onclick="togMute()" style="padding:3px 7px">🔇</button>
     </div>
   </div>
-
-  <div class="card card-grow">
-    <div class="card-title">📁 المحتوى <small style="color:#39d353;font-size:.6rem">(✅ = بلاي ليست)</small></div>
-    <div class="list" id="mediaList"></div>
-    <div class="add-form">
-      <div class="type-row">
-        <button class="tbtn sel" id="t_video"     onclick="setT('video')">🌐 360°</button>
-        <button class="tbtn"     id="t_videoFlat" onclick="setT('videoFlat')">🎬 عادي</button>
-        <button class="tbtn"     id="t_image"     onclick="setT('image')">🖼 صورة</button>
-        <button class="tbtn"     id="t_image360"  onclick="setT('image360')">🌐 ص360</button>
+  <div class="card card-g">
+    <div class="ct">📁 المحتوى <small style="color:var(--te);font-size:.58rem">(✅ = بلاي ليست)</small></div>
+    <div class="list" id="mList"></div>
+    <div class="af">
+      <div class="tr">
+        <button class="tb sel" id="t_video"     onclick="setT('video')">🌐 360°</button>
+        <button class="tb"     id="t_videoFlat" onclick="setT('videoFlat')">🎬 عادي</button>
+        <button class="tb"     id="t_image"     onclick="setT('image')">🖼 صورة</button>
+        <button class="tb"     id="t_image360"  onclick="setT('image360')">🌐 ص360</button>
       </div>
-      <div style="display:flex;gap:5px">
-        <input type="text" id="mName" placeholder="الاسم" style="flex:1">
-        <input type="text" id="mUrl" placeholder="الرابط..." class="input-ltr" style="flex:2">
+      <div style="display:flex;gap:4px">
+        <input type="text" id="mNm" placeholder="الاسم" style="flex:1">
+        <input type="text" id="mUr" placeholder="الرابط" class="ltr" style="flex:2">
       </div>
-      <div class="dir-row">
-        <span class="vol-lbl">🧭 <span id="degV">0°</span></span>
-        <input type="range" id="degSl" min="0" max="359" value="0" oninput="setDeg(this.value)" style="flex:1">
-        <button class="dir-btn" onclick="setDeg(0)">ش</button>
-        <button class="dir-btn" onclick="setDeg(90)">ش</button>
-        <button class="dir-btn" onclick="setDeg(180)">ج</button>
-        <button class="dir-btn" onclick="setDeg(270)">غ</button>
+      <div class="dr">
+        <span class="vl">🧭 <span id="dV">0°</span></span>
+        <input type="range" id="dSl" min="0" max="359" value="0" oninput="setDg(this.value)" style="flex:1">
+        <button class="db" onclick="setDg(0)">ش</button>
+        <button class="db" onclick="setDg(90)">ش</button>
+        <button class="db" onclick="setDg(180)">ج</button>
+        <button class="db" onclick="setDg(270)">غ</button>
       </div>
-      <button class="btn b-green" style="width:100%" onclick="addMedia()">➕ إضافة</button>
+      <button class="btn b-gr" style="width:100%" onclick="addM()">➕ إضافة</button>
     </div>
   </div>
 </div>
 
-<!-- COL 2 -->
+<!-- COL 2: صوت -->
 <div class="col">
   <div class="card">
-    <div class="card-title">🎵 الصوت</div>
-    <div class="timer-sm" id="aTimer">00:00:00</div>
-    <div class="seek-row">
-      <span class="seek-lbl" id="aCur">00:00</span>
-      <input type="range" id="aSeek" min="0" max="100" value="0"
-        onmousedown="aDrag=true" ontouchstart="aDrag=true"
-        onmouseup="doASeek(this.value);aDrag=false"
-        ontouchend="doASeek(this.value);aDrag=false"
-        oninput="if(aDrag){var t=(this.value/100)*aDur;updATimer(t);}">
-      <span class="seek-lbl" id="aEnd">00:00</span>
+    <div class="ct">🎵 الصوت</div>
+    <div class="tsm" id="aT">00:00:00</div>
+    <div class="sk">
+      <span class="sl" id="aC">00:00</span>
+      <input type="range" id="aS" min="0" max="100" value="0"
+        onmousedown="aDg=true" ontouchstart="aDg=true"
+        onmouseup="doAS(this.value);aDg=false" ontouchend="doAS(this.value);aDg=false"
+        oninput="if(aDg){var t=(this.value/100)*aDr;updAT(t);}">
+      <span class="sl" id="aE">00:00</span>
     </div>
-    <input type="text" id="aUrl" placeholder="رابط mp3..." class="input-ltr">
-    <div class="ctrl-row">
-      <button class="btn b-purple" onclick="aPlay()">▶</button>
-      <button class="btn b-gray"   onclick="aPause()">⏸</button>
-      <button class="btn b-gray"   onclick="aRestart()">🔄</button>
-      <button class="btn b-red"    onclick="aStop()">⏹</button>
-      <span class="vol-lbl">🔊</span>
-      <input type="range" id="aVol" min="0" max="100" value="100" oninput="setAVol(this.value)" style="max-width:80px">
-      <span class="vol-val" id="aVolV">100%</span>
+    <input type="text" id="aUr" placeholder="رابط mp3..." class="ltr">
+    <div class="cr">
+      <button class="btn b-pu" onclick="aPlay()">▶</button>
+      <button class="btn b-gy" onclick="aPause()">⏸</button>
+      <button class="btn b-gy" onclick="aRestart()">🔄</button>
+      <button class="btn b-rd" onclick="aStop()">⏹</button>
+      <span class="vl">🔊</span>
+      <input type="range" id="aVl" min="0" max="100" value="100" oninput="setAVol(this.value)" style="max-width:70px">
+      <span class="vv" id="aVv">100%</span>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">▶▶ البلاي ليست</div>
-    <div class="ctrl-row">
-      <button class="btn b-teal" id="plBtn" onclick="plToggle()">▶▶ ابدأ</button>
-      <button class="btn b-gray" onclick="plNextItem()">⏭ التالي</button>
-      <button class="btn b-blue" onclick="plReset()">🔁 أول</button>
+    <div class="ct">▶▶ البلاي ليست</div>
+    <div class="cr">
+      <button class="btn b-te" id="plBtn" onclick="plTog()">▶▶ ابدأ</button>
+      <button class="btn b-gy" onclick="plNx()">⏭ التالي</button>
+      <button class="btn b-bl" onclick="plRst()">🔁 أول</button>
     </div>
-    <div class="ctrl-row">
-      <span class="vol-lbl">⏳ عد تنازلي:</span>
-      <input type="number" id="cdSecs" value="5" min="1" max="60" style="width:60px;padding:4px 6px;background:var(--s2);border:1px solid var(--br);border-radius:5px;color:var(--tx);font-size:.8rem;text-align:center">
-      <span class="vol-lbl">ثانية</span>
-      <button class="btn b-yellow" onclick="startCountdown()">⏱ ابدأ العد</button>
+    <div class="cr">
+      <span class="vl">⏳</span>
+      <input type="number" id="cdN" value="5" min="1" max="60" style="width:55px;text-align:center">
+      <span class="vl">ثانية</span>
+      <button class="btn b-ye" onclick="startCD()">⏱ عد تنازلي</button>
     </div>
-    <div style="display:flex;align-items:center;gap:7px">
-      <input type="checkbox" id="plAudioOn" style="width:15px;height:15px;accent-color:var(--pu)">
-      <label for="plAudioOn" style="font-size:.75rem;color:var(--mu);cursor:pointer">شغّل صوت مع البلاي ليست</label>
+    <div style="display:flex;align-items:center;gap:6px">
+      <input type="checkbox" id="plAOn" style="width:14px;height:14px;accent-color:var(--pu)">
+      <label for="plAOn" style="font-size:.72rem;color:var(--mu);cursor:pointer">شغّل صوت مع البلاي ليست</label>
     </div>
-    <div id="plAudioRow" style="display:none">
-      <select id="plAudioSel"><option value="">-- اختر صوت --</option></select>
+    <div id="plARow" style="display:none">
+      <select id="plASel"><option value="">-- بدون صوت --</option></select>
     </div>
   </div>
 
-  <div class="card card-grow">
-    <div class="card-title">🎵 قائمة الأصوات</div>
-    <div class="list" id="audioList"></div>
-    <div style="display:flex;gap:5px;padding-top:6px;border-top:1px solid var(--br);flex-shrink:0">
-      <input type="text" id="aName" placeholder="الاسم" style="flex:1">
-      <input type="text" id="aLink" placeholder="رابط mp3" class="input-ltr" style="flex:2">
-      <button class="btn b-purple" onclick="addAudio()">➕</button>
+  <div class="card card-g">
+    <div class="ct">🎵 قائمة الأصوات</div>
+    <div class="list" id="aList"></div>
+    <div style="display:flex;gap:4px;padding-top:6px;border-top:1px solid var(--br);flex-shrink:0">
+      <input type="text" id="aNm" placeholder="الاسم" style="flex:1">
+      <input type="text" id="aLk" placeholder="رابط mp3" class="ltr" style="flex:2">
+      <button class="btn b-pu" onclick="addA()">➕</button>
     </div>
   </div>
 </div>
 
-<!-- COL 3 -->
+<!-- COL 3: أجهزة -->
 <div class="col">
-  <div class="card card-grow">
-    <div class="card-title">👥 الأجهزة</div>
-    <div class="list" id="viewerList"></div>
+  <div class="card card-g">
+    <div class="ct">👥 الأجهزة</div>
+    <div class="list" id="vList"></div>
   </div>
-  <div class="sbar" id="sbar">جاري الاتصال...</div>
+  <div class="sb" id="sb">جاري الاتصال...</div>
 </div>
 
 </div>
 <script>
-// ─────────────────────────────
-//  STATE
-// ─────────────────────────────
 var socket = io();
-var ci = 0;
-var selType = 'video', selDeg = 0;
-var vPlaying = false, vStart = null, vPaused = 0, vDur = 0, vDrag = false;
-var vVol = 100, vMuted = false;
-var aPlaying = false, aStart = null, aPaused = 0, aDur = 0, aDrag = false;
-var aVol2 = 100;
-var vInt = null, aInt = null;
-var plActive = false, plTimer = null, plIdx = 0;
-var isOpen = false;
+var roomId = '';
+var roomName = '';
+var ci=0, sT='video', sDg=0;
+var vPl=false, vSt=null, vPa=0, vDr=0, vDg=false, vMt=false, vVo=100;
+var aPl=false, aSt=null, aPa=0, aDr=0, aDg=false, aVo=100;
+var vIn=null, aIn=null;
+var plAc=false, plTm=null, plIx=0, plPaused=false;
+var isOp=false;
+var TL={video:'360°',videoFlat:'عادي',image:'صورة',image360:'ص360'};
+var TI={video:'🌐',videoFlat:'🎬',image:'🖼',image360:'🌐'};
 
-var TL = { video:'360°', videoFlat:'عادي', image:'صورة', image360:'ص360' };
-var TI = { video:'🌐', videoFlat:'🎬', image:'🖼', image360:'🌐' };
+var DEF=[{name:'جولة المعبد',type:'video',degree:0,inPL:false,url:'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4'}];
+var ml=[], al=[];
+try{ml=JSON.parse(localStorage.getItem('ml2'))||DEF.slice();}catch(e){ml=DEF.slice();}
+try{al=JSON.parse(localStorage.getItem('al2'))||[];}catch(e){al=[];}
+function sML(){try{localStorage.setItem('ml2',JSON.stringify(ml));}catch(e){} socket.emit('save-lists',{mediaList:ml,audioList:al});}
+function sAL(){try{localStorage.setItem('al2',JSON.stringify(al));}catch(e){} socket.emit('save-lists',{mediaList:ml,audioList:al});}
 
-// ─────────────────────────────
-//  LOCALSTORAGE
-// ─────────────────────────────
-var DEF = [{ name:'جولة المعبد', type:'video', degree:0, inPL:false,
-  url:'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4' }];
-var ml = [], al = [];
-try { ml = JSON.parse(localStorage.getItem('ml2')) || DEF; } catch(e) { ml = DEF.slice(); }
-try { al = JSON.parse(localStorage.getItem('al2')) || []; }  catch(e) { al = []; }
-function sML(){ try{ localStorage.setItem('ml2', JSON.stringify(ml)); }catch(e){} }
-function sAL(){ try{ localStorage.setItem('al2', JSON.stringify(al)); }catch(e){} }
+// ─── CONNECTION ───
 
-// ─────────────────────────────
-//  SOCKET
-// ─────────────────────────────
-socket.on('connect', function() {
-  socket.emit('join-host');
-  log('✅ متصل');
-});
-socket.on('disconnect', function() { log('❌ انقطع'); });
-socket.on('connect_error', function() { log('❌ خطأ اتصال'); });
-
-socket.on('open-ok', function(d) {
-  isOpen = d.open;
-  var btn = document.getElementById('openBtn');
-  btn.textContent = isOpen ? '✅ مفتوح' : '⛔ مغلق';
-  btn.className   = isOpen ? 'btn b-on' : 'btn b-off';
-  log(isOpen ? '✅ الدخول مفتوح' : '⛔ الدخول مغلق');
+// ─── LOBBY ───
+socket.on('connect', function(){
+  // لو في روم محفوظ — حاول ترجعله
+  var saved = localStorage.getItem('vr_room');
+  if (saved) {
+    try {
+      var r = JSON.parse(saved);
+      roomId = r.id; roomName = r.name;
+      socket.emit('rejoin-host', { roomId: r.id });
+    } catch(e) { localStorage.removeItem('vr_room'); }
+  }
+  log('جاري الاتصال...');
 });
 
-socket.on('vcount', function(n) { document.getElementById('vCount').textContent = n; });
-socket.on('vlist', function(list) {
-  var el = document.getElementById('viewerList');
-  if (!list.length) { el.innerHTML = '<div class="empty-msg">لا يوجد أجهزة</div>'; return; }
-  var bc = { 'انتظار':'bw', 'اختيار وضع':'bc', 'عادي':'bn', 'VR':'bv' };
-  el.innerHTML = list.map(function(v) {
-    return '<div class="vitem">' +
-      '<div class="vnum">' + v.num + '</div>' +
-      '<div style="flex:1;min-width:0"><div class="vname">' + esc(v.name) + '</div>' +
-      '<span class="vbadge ' + (bc[v.status]||'bw') + '">' + v.status + '</span></div>' +
-      '<button class="vkick" onclick="kickOne(\'' + v.id + '\')">طرد</button>' +
-      '</div>';
+socket.on('room-rejoined', function(d){
+  roomId=d.id; roomName=d.name;
+  if(d.mediaList&&d.mediaList.length) ml=d.mediaList;
+  if(d.audioList&&d.audioList.length) al=d.audioList;
+  localStorage.setItem('vr_room', JSON.stringify({id:d.id,name:d.name}));
+  document.getElementById('lobbyScreen').style.display='none';
+  document.getElementById('roomChip').textContent='🟢 '+d.name;
+  isOp=d.open;
+  var btn=document.getElementById('openBtn');
+  btn.textContent=isOp?'✅ مفتوح':'⛔ مغلق';
+  btn.className=isOp?'btn b-on':'btn b-off';
+  renderML(); renderAL(); log('✅ متصل — '+d.name);
+});
+
+socket.on('room-not-found', function(){
+  localStorage.removeItem('vr_room');
+  document.getElementById('lobbyScreen').style.display='flex';
+  document.getElementById('lobbyMsg').style.display='block';
+  document.getElementById('lobbyMsg').textContent='الروم انتهى — أنشئ روم جديد';
+});
+
+socket.on('room-created', function(d){
+  roomId=d.id; roomName=d.name;
+  localStorage.setItem('vr_room', JSON.stringify({id:d.id,name:d.name}));
+  document.getElementById('lobbyScreen').style.display='none';
+  document.getElementById('roomChip').textContent='🟢 '+d.name;
+  renderML(); renderAL(); log('✅ روم جديد — '+d.name);
+});
+
+socket.on('room-deleted', function(){
+  localStorage.removeItem('vr_room');
+  document.getElementById('lobbyScreen').style.display='flex';
+  document.getElementById('lobbyMsg').style.display='none';
+  log('تم حذف الروم');
+});
+
+function doCreate(){
+  var n=document.getElementById('rName').value.trim()||'الروم';
+  socket.emit('create-room',{name:n,mediaList:ml,audioList:al});
+}
+
+socket.on('open-ok', function(d){
+  isOp=d.open;
+  var btn=document.getElementById('openBtn');
+  btn.textContent=isOp?'✅ مفتوح':'⛔ مغلق';
+  btn.className=isOp?'btn b-on':'btn b-off';
+  log(isOp?'✅ مفتوح':'⛔ مغلق');
+});
+
+socket.on('disconnect', function(){ log('❌ انقطع الاتصال'); });
+
+// ─── VIEWERS ───
+socket.on('vcount', function(n){ document.getElementById('vCount').textContent=n; });
+socket.on('vlist', function(list){
+  var el=document.getElementById('vList');
+  if(!list.length){el.innerHTML='<div class="empty">لا يوجد أجهزة</div>';return;}
+  var bc={'انتظار':'bw','اختيار وضع':'bc','عادي':'bn','VR':'bv'};
+  el.innerHTML=list.map(function(v){
+    return '<div class="vit"><div class="vn">'+v.num+'</div>'+
+      '<div style="flex:1;min-width:0"><div class="vna">'+esc(v.name)+'</div>'+
+      '<span class="vbg '+(bc[v.status]||'bw')+'">'+v.status+'</span></div>'+
+      '<button class="vk" onclick="kickOne(\''+v.id+'\')">طرد</button></div>';
   }).join('');
 });
 
-socket.on('dur', function(d) {
-  if (d.duration > 0) {
-    vDur = d.duration;
-    document.getElementById('vEnd').textContent = fmtShort(d.duration);
-    if (plActive) startVInt();
+// ─── ROOM MODAL ───
+function showModal(){
+  var url=window.location.origin+'/index.html#'+roomId;
+  document.getElementById('shareUrl').textContent=url;
+  document.getElementById('shareModal').classList.add('show');
+}
+function closeModal(){ document.getElementById('shareModal').classList.remove('show'); }
+function copyUrl(){
+  var url=window.location.origin+'/index.html#'+roomId;
+  navigator.clipboard.writeText(url).then(function(){log('✅ تم نسخ الرابط');}).catch(function(){});
+  closeModal();
+}
+function deleteRoom(){
+  if(confirm('هتحذف الروم وتعمل واحد جديد؟')){
+    socket.emit('delete-room');
+    closeModal();
   }
+}
+
+// ─── OPEN/CLOSE ───
+socket.on('open-ok', function(d){
+  isOp=d.open;
+  var btn=document.getElementById('openBtn');
+  btn.textContent=isOp?'✅ مفتوح':'⛔ مغلق';
+  btn.className=isOp?'btn b-on':'btn b-off';
+  log(isOp?'✅ مفتوح':'⛔ مغلق');
 });
-socket.on('adur', function(d) {
-  if (d.duration > 0) {
-    aDur = d.duration;
-    document.getElementById('aEnd').textContent = fmtShort(d.duration);
-  }
-});
-socket.on('media', function(d) {
-  vPlaying = d.playing; vStart = d.startedAt; vPaused = d.pausedAt || 0;
-  if (vPlaying) startVInt(); else { clearInterval(vInt); updVTimer(vPaused); }
-});
+function toggleOpen(){ socket.emit('set-open',{open:!isOp}); }
+function restartSess(){ socket.emit('restart-session'); log('🔄 إعادة الجلسة'); }
+function kickOne(id){ socket.emit('kick-one',{id:id}); log('🚪 طُرد'); }
+function kickAll(){ if(confirm('طرد الكل؟')){socket.emit('kick-all');log('🚪 طُرد الكل');} }
 
-// ─────────────────────────────
-//  OPEN / CLOSE
-// ─────────────────────────────
-function moveM(i, dir) {
-  var j = i + dir;
-  if (j < 0 || j >= ml.length) return;
-  var tmp = ml[i]; ml[i] = ml[j]; ml[j] = tmp;
-  if (ci === i) ci = j; else if (ci === j) ci = i;
-  sML(); renderML();
+// ─── VIDEO ───
+function cmdPlay(){
+  if(!ml[ci])return;
+  var m=ml[ci];
+  socket.emit('cmd-play',{url:m.url,type:m.type,degree:m.degree||0,volume:vVo/100,muted:vMt});
+  vPl=true; vPa=0; vSt=Date.now(); startVI(); log('▶ '+m.name);
+  document.getElementById('sPill').textContent='شغّال';
 }
+function cmdPause(){
+  if(vSt) vPa=(Date.now()-vSt)/1000;
+  vPl=false; socket.emit('cmd-pause'); clearInterval(vIn);
+  log('⏸ متوقف'); document.getElementById('sPill').textContent='متوقف';
+}
+function cmdReset(){
+  socket.emit('cmd-seek',{t:0}); socket.emit('cmd-pause');
+  vPl=false; vPa=0; vSt=null; updVT(0); document.getElementById('vS').value=0; log('⏮ من الأول');
+}
+function cmdSync(){ socket.emit('cmd-sync'); log('⚡ Sync'); }
+function doVS(v){
+  var t=(v/100)*vDr;
+  vSt=Date.now()-(t*1000); vPa=t;
+  socket.emit('cmd-seek',{t:t}); updVT(t); log('⏩ '+fmt(t));
+}
+function setVol(v){ vVo=+v; document.getElementById('vVv').textContent=v+'%'; socket.emit('cmd-vol',{v:v/100,m:vMt}); }
+function togMute(){ vMt=!vMt; document.getElementById('mBtn').textContent=vMt?'🔊':'🔇'; socket.emit('cmd-vol',{v:vVo/100,m:vMt}); }
 
-function restartSession() {
-  socket.emit('restart-session');
-  log('🔄 تمت إعادة الجلسة');
-}
-
-function toggleOpen() { socket.emit('set-open', { open: !isOpen }); }
-function kickOne(id) { socket.emit('kick-one', { id: id }); log('🚪 طُرد'); }
-function kickAll() { if(confirm('طرد الكل؟')) { socket.emit('kick-all'); log('🚪 طُرد الكل'); } }
-
-// ─────────────────────────────
-//  VIDEO CONTROLS
-// ─────────────────────────────
-function cmdPlay() {
-  if (!ml[ci]) return;
-  var m = ml[ci];
-  socket.emit('cmd-play', { url:m.url, type:m.type, degree:m.degree||0, volume:vVol/100, muted:vMuted });
-  vPlaying = true; vPaused = 0; vStart = Date.now();
-  startVInt(); log('▶ ' + m.name);
-  document.getElementById('statusPill').textContent = 'شغّال';
-}
-function cmdPause() {
-  if (vStart) vPaused = (Date.now() - vStart) / 1000;
-  vPlaying = false; socket.emit('cmd-pause');
-  clearInterval(vInt); log('⏸ متوقف');
-  document.getElementById('statusPill').textContent = 'متوقف';
-}
-function cmdReset() {
-  socket.emit('cmd-seek', { t: 0 }); socket.emit('cmd-pause');
-  vPlaying = false; vPaused = 0; vStart = null;
-  updVTimer(0); document.getElementById('vSeek').value = 0;
-  log('⏮ من الأول');
-}
-function cmdSync() { socket.emit('cmd-sync'); log('⚡ Sync'); }
-function doVSeek(v) {
-  var t = (v / 100) * vDur;
-  vStart = Date.now() - (t * 1000); vPaused = t;
-  socket.emit('cmd-seek', { t: t }); updVTimer(t); log('⏩ ' + fmt(t));
-}
-function setVol(v) { vVol = +v; document.getElementById('vVolV').textContent = v + '%'; socket.emit('cmd-vol', { v: v/100, m: vMuted }); }
-function toggleMute() { vMuted = !vMuted; document.getElementById('muteBtn').textContent = vMuted ? '🔊' : '🔇'; socket.emit('cmd-vol', { v: vVol/100, m: vMuted }); }
-
-function startVInt() {
-  clearInterval(vInt);
-  vInt = setInterval(function() {
-    if (!vPlaying || !vStart) return;
-    var t = (Date.now() - vStart) / 1000;
-    if (!vDrag) {
-      updVTimer(t);
-      if (vDur > 0) document.getElementById('vSeek').value = (t / vDur) * 100;
+// تايمر الفيديو — بيفضل يعد ومش بيرجع للصفر لو الفيديو اتعاد
+var vOffset=0; // إجمالي الثواني اللي اتشالت من بدايات سابقة
+function startVI(){
+  clearInterval(vIn);
+  vIn=setInterval(function(){
+    if(!vPl||!vSt)return;
+    var t=(Date.now()-vSt)/1000 + vOffset;
+    if(!vDg){
+      document.getElementById('vT').textContent=fmt(t);
+      document.getElementById('vC').textContent=fmtS((Date.now()-vSt)/1000);
+      if(vDr>0) document.getElementById('vS').value=((Date.now()-vSt)/1000/vDr)*100;
     }
-    if (plActive && vDur > 0 && t >= vDur - 0.8) { clearInterval(vInt); plNextItem(); }
-  }, 200);
+    // بلاي ليست: لما الفيديو يخلص
+    if(plAc&&vDr>0&&(Date.now()-vSt)/1000>=vDr-0.8){clearInterval(vIn);plNx();}
+  },200);
 }
-function updVTimer(t) {
-  if (t < 0) t = 0;
-  document.getElementById('vTimer').textContent = fmt(t);
-  document.getElementById('vCur').textContent = fmtShort(t);
-}
-
-// ─────────────────────────────
-//  AUDIO CONTROLS
-// ─────────────────────────────
-function aPlay() {
-  var u = document.getElementById('aUrl').value.trim();
-  if (!u) return log('ضع رابط الصوت');
-  socket.emit('audio-play', { url: u, v: aVol2/100 });
-  aPlaying = true; aPaused = 0; aStart = Date.now(); startAInt(); log('🎵 شغّل');
-}
-function aPause() {
-  if (aStart) aPaused = (Date.now() - aStart) / 1000;
-  aPlaying = false; socket.emit('audio-pause'); log('🎵 وقّف');
-}
-function aRestart() {
-  var u = document.getElementById('aUrl').value.trim();
-  if (!u) return log('ضع رابط الصوت');
-  socket.emit('audio-restart', { url: u, v: aVol2/100 });
-  aPlaying = true; aPaused = 0; aStart = Date.now(); startAInt(); log('🎵 من الأول');
-}
-function aStop() {
-  socket.emit('audio-stop');
-  aPlaying = false; aPaused = 0; aStart = null;
-  clearInterval(aInt); updATimer(0); log('🎵 وقف');
-}
-function setAVol(v) { aVol2 = +v; document.getElementById('aVolV').textContent = v + '%'; socket.emit('audio-vol', { v: v/100 }); }
-function doASeek(v) {
-  var t = (v / 100) * aDur;
-  aStart = Date.now() - (t * 1000); aPaused = t;
-  socket.emit('audio-seek', { t: t }); updATimer(t); log('⏩ صوت ' + fmt(t));
-}
-function startAInt() {
-  clearInterval(aInt);
-  aInt = setInterval(function() {
-    if (!aPlaying || !aStart) return;
-    var t = (Date.now() - aStart) / 1000;
-    if (!aDrag) updATimer(t);
-  }, 200);
-}
-function updATimer(t) {
-  if (t < 0) t = 0;
-  document.getElementById('aTimer').textContent = fmt(t);
-  document.getElementById('aCur').textContent = fmtShort(t);
-  if (aDur > 0 && !aDrag) document.getElementById('aSeek').value = (t / aDur) * 100;
+function updVT(t){
+  if(t<0)t=0;
+  document.getElementById('vT').textContent=fmt(vOffset+t);
+  document.getElementById('vC').textContent=fmtS(t);
 }
 
-// ─────────────────────────────
-//  MEDIA LIST
-// ─────────────────────────────
-function setT(t) {
-  selType = t;
-  ['video','videoFlat','image','image360'].forEach(function(x) {
-    document.getElementById('t_' + x).className = 'tbtn' + (x === t ? ' sel' : '');
+socket.on('dur',function(d){
+  if(d.duration>0){
+    vDr=d.duration;
+    document.getElementById('vE').textContent=fmtS(d.duration);
+    if(plAc) startVI();
+  }
+});
+socket.on('media',function(d){
+  vPl=d.playing; vSt=d.startedAt; vPa=d.pausedAt||0;
+  if(vPl) startVI(); else{clearInterval(vIn);updVT(vPa);}
+});
+
+// ─── AUDIO ───
+function aPlay(){
+  var u=document.getElementById('aUr').value.trim();
+  if(!u)return log('ضع رابط الصوت');
+  socket.emit('audio-play',{url:u,v:aVo/100});
+  aPl=true; aPa=0; aSt=Date.now(); startAI(); log('🎵 شغّل');
+}
+function aPause(){
+  if(aSt) aPa=(Date.now()-aSt)/1000;
+  aPl=false; socket.emit('audio-pause'); log('🎵 وقّف');
+}
+function aRestart(){
+  var u=document.getElementById('aUr').value.trim();
+  if(!u)return log('ضع رابط الصوت');
+  socket.emit('audio-restart',{url:u,v:aVo/100});
+  aPl=true; aPa=0; aSt=Date.now(); startAI(); log('🎵 من الأول');
+}
+function aStop(){
+  socket.emit('audio-stop'); aPl=false; aPa=0; aSt=null;
+  clearInterval(aIn); updAT(0); log('🎵 وقف');
+}
+function setAVol(v){ aVo=+v; document.getElementById('aVv').textContent=v+'%'; socket.emit('audio-vol',{v:v/100}); }
+function doAS(v){
+  var t=(v/100)*aDr;
+  aSt=Date.now()-(t*1000); aPa=t;
+  socket.emit('audio-seek',{t:t}); updAT(t); log('⏩ صوت '+fmt(t));
+}
+function startAI(){
+  clearInterval(aIn);
+  aIn=setInterval(function(){
+    if(!aPl||!aSt)return;
+    var t=(Date.now()-aSt)/1000;
+    if(!aDg) updAT(t);
+  },200);
+}
+function updAT(t){
+  if(t<0)t=0;
+  document.getElementById('aT').textContent=fmt(t);
+  document.getElementById('aC').textContent=fmtS(t);
+  if(aDr>0&&!aDg) document.getElementById('aS').value=(t/aDr)*100;
+}
+socket.on('adur',function(d){
+  if(d.duration>0){aDr=d.duration;document.getElementById('aE').textContent=fmtS(d.duration);}
+});
+
+// ─── MEDIA LIST ───
+function setT(t){
+  sT=t;
+  ['video','videoFlat','image','image360'].forEach(function(x){
+    document.getElementById('t_'+x).className='tb'+(x===t?' sel':'');
   });
 }
-function setDeg(v) {
-  selDeg = +v;
-  document.getElementById('degSl').value = v;
-  document.getElementById('degV').textContent = v + '°';
-}
+function setDg(v){sDg=+v;document.getElementById('dSl').value=v;document.getElementById('dV').textContent=v+'°';}
 
-var editIdx = -1;
-function renderML() {
-  var el = document.getElementById('mediaList');
-  if (!ml.length) { el.innerHTML = '<div class="empty-msg">لا يوجد محتوى</div>'; return; }
-  el.innerHTML = ml.map(function(m, i) {
-    if (editIdx === i) {
-      return '<div class="edit-box">' +
-        '<input type="text" id="en" value="' + esc(m.name) + '" placeholder="الاسم">' +
-        '<input type="text" id="eu" value="' + esc(m.url) + '" placeholder="الرابط" class="input-ltr">' +
-        '<select id="et">' + ['video','videoFlat','image','image360'].map(function(t){ return '<option value="'+t+'"'+(m.type===t?' selected':'')+'>'+TL[t]+'</option>'; }).join('') + '</select>' +
-        '<div class="dir-row"><span class="vol-lbl">🧭</span><input type="range" id="ed" min="0" max="359" value="' + (m.degree||0) + '" style="flex:1" oninput="document.getElementById(\'edv\').textContent=this.value+\'°\'"><span id="edv" style="font-size:.65rem;color:var(--ye)">' + (m.degree||0) + '°</span></div>' +
-        '<div style="display:flex;gap:5px"><button class="btn b-green" onclick="saveEdit(' + i + ')" style="flex:1">💾 حفظ</button><button class="btn b-gray" onclick="editIdx=-1;renderML()" style="flex:1">✕ إلغاء</button></div>' +
-        '</div>';
-    }
-    return '<div class="li' + (i===ci?' active':'') + (m.inPL?' in-pl':'') + '" onclick="ci='+i+';renderML()">' +
-      '<div class="li-icon">' + TI[m.type] + '</div>' +
-      '<div class="li-info"><div class="li-name">' + esc(m.name) + '</div><div class="li-meta">' + TL[m.type] + ' • ' + (m.degree||0) + '°</div></div>' +
-      '<div class="li-acts">' +
-      '<button class="ib" style="background:'+(m.inPL?'rgba(57,211,83,.25)':'rgba(139,148,158,.15)')+';color:'+(m.inPL?'var(--te)':'var(--mu)')+'" onclick="event.stopPropagation();togglePL('+i+')">'+(m.inPL?'✅':'⬜')+'</button>' +
-      '<button class="ib" style="background:rgba(63,185,80,.2);color:var(--gr)" onclick="event.stopPropagation();playM('+i+')">▶</button>' +
-      '<button class="ib" style="background:rgba(139,148,158,.15);color:var(--mu)" onclick="event.stopPropagation();moveM('+i+',-1)" title="لأعلى">↑</button>' +
-      '<button class="ib" style="background:rgba(139,148,158,.15);color:var(--mu)" onclick="event.stopPropagation();moveM('+i+',1)" title="لأسفل">↓</button>' +
-      '<button class="ib" style="background:rgba(188,140,255,.2);color:var(--pu)" onclick="event.stopPropagation();editIdx='+i+';renderML()">✏</button>' +
-      '<button class="ib" style="background:rgba(248,81,73,.2);color:#f85149" onclick="event.stopPropagation();delM('+i+')">✕</button>' +
+var editIdx=-1;
+function renderML(){
+  var el=document.getElementById('mList');
+  if(!ml.length){el.innerHTML='<div class="empty">لا يوجد محتوى</div>';return;}
+  el.innerHTML=ml.map(function(m,i){
+    if(editIdx===i) return '<div class="eb">'+
+      '<input type="text" id="en" value="'+esc(m.name)+'" placeholder="الاسم">'+
+      '<input type="text" id="eu" value="'+esc(m.url)+'" placeholder="الرابط" class="ltr">'+
+      '<select id="et">'+['video','videoFlat','image','image360'].map(function(t){return'<option value="'+t+'"'+(m.type===t?' selected':'')+'>'+TL[t]+'</option>';}).join('')+'</select>'+
+      '<div class="dr"><span class="vl">🧭</span><input type="range" id="ed" min="0" max="359" value="'+(m.degree||0)+'" style="flex:1" oninput="document.getElementById(\'edv\').textContent=this.value+\'°\'"><span id="edv" style="font-size:.62rem;color:var(--ye)">'+(m.degree||0)+'°</span></div>'+
+      '<div style="display:flex;gap:4px"><button class="btn b-gr" onclick="svEd('+i+')" style="flex:1">💾 حفظ</button><button class="btn b-gy" onclick="editIdx=-1;renderML()" style="flex:1">✕</button></div>'+
+      '</div>';
+    return '<div class="li'+(i===ci?' act':'')+(m.inPL?' inpl':'')+'" onclick="ci='+i+';renderML()">'+
+      '<div class="li-ic">'+TI[m.type]+'</div>'+
+      '<div class="li-inf"><div class="li-n">'+esc(m.name)+'</div><div class="li-m">'+TL[m.type]+' • '+(m.degree||0)+'°</div></div>'+
+      '<div class="li-a">'+
+      '<button class="ib" style="background:'+(m.inPL?'rgba(57,211,83,.25)':'rgba(139,148,158,.12)')+';color:'+(m.inPL?'var(--te)':'var(--mu)')+'" onclick="event.stopPropagation();togPL('+i+')">'+(m.inPL?'✅':'⬜')+'</button>'+
+      '<button class="ib" style="background:rgba(63,185,80,.2);color:var(--gr)" onclick="event.stopPropagation();playM('+i+')">▶</button>'+
+      '<button class="ib" style="background:rgba(139,148,158,.12);color:var(--mu)" onclick="event.stopPropagation();mvM('+i+',-1)">↑</button>'+
+      '<button class="ib" style="background:rgba(139,148,158,.12);color:var(--mu)" onclick="event.stopPropagation();mvM('+i+',1)">↓</button>'+
+      '<button class="ib" style="background:rgba(188,140,255,.2);color:var(--pu)" onclick="event.stopPropagation();editIdx='+i+';renderML()">✏</button>'+
+      '<button class="ib" style="background:rgba(248,81,73,.2);color:var(--rd)" onclick="event.stopPropagation();delM('+i+')">✕</button>'+
       '</div></div>';
   }).join('');
 }
-function togglePL(i) { ml[i].inPL = !ml[i].inPL; sML(); renderML(); log(ml[i].inPL ? '✅ أُضيف' : '⬜ أُزيل'); }
-function saveEdit(i) {
-  var n = document.getElementById('en').value.trim();
-  var u = document.getElementById('eu').value.trim();
-  var t = document.getElementById('et').value;
-  var d = parseInt(document.getElementById('ed').value);
-  if (!n || !u) return alert('الاسم والرابط مطلوبين');
-  ml[i] = Object.assign({}, ml[i], { name:n, url:u, type:t, degree:d });
-  editIdx = -1; sML(); renderML(); log('✅ تم التعديل');
+function togPL(i){ml[i].inPL=!ml[i].inPL;sML();renderML();log(ml[i].inPL?'✅ أُضيف':'⬜ أُزيل');}
+function svEd(i){
+  var n=document.getElementById('en').value.trim(),u=document.getElementById('eu').value.trim();
+  var t=document.getElementById('et').value,d=parseInt(document.getElementById('ed').value);
+  if(!n||!u)return alert('الاسم والرابط مطلوبين');
+  ml[i]=Object.assign({},ml[i],{name:n,url:u,type:t,degree:d});
+  editIdx=-1;sML();renderML();log('✅ تم التعديل');
 }
-function addMedia() {
-  var n = document.getElementById('mName').value.trim();
-  var u = document.getElementById('mUrl').value.trim();
-  if (!n || !u) return alert('الاسم والرابط مطلوبين');
-  ml.push({ name:n, type:selType, url:u, degree:selDeg, inPL:false });
-  document.getElementById('mName').value = '';
-  document.getElementById('mUrl').value  = '';
-  setDeg(0); sML(); renderML(); log('✅ أُضيف: ' + n);
+function addM(){
+  var n=document.getElementById('mNm').value.trim(),u=document.getElementById('mUr').value.trim();
+  if(!n||!u)return alert('الاسم والرابط مطلوبين');
+  ml.push({name:n,type:sT,url:u,degree:sDg,inPL:false});
+  document.getElementById('mNm').value='';document.getElementById('mUr').value='';
+  setDg(0);sML();renderML();log('✅ أُضيف: '+n);
 }
-function delM(i) { ml.splice(i,1); if (ci>=ml.length) ci=Math.max(0,ml.length-1); sML(); renderML(); }
-function playM(i) {
-  ci = i; var m = ml[i]; renderML();
-  socket.emit('cmd-play', { url:m.url, type:m.type, degree:m.degree||0, volume:vVol/100, muted:vMuted });
-  vPlaying = true; vPaused = 0; vStart = Date.now();
-  startVInt(); log('▶ ' + m.name);
-  document.getElementById('statusPill').textContent = 'شغّال';
+function delM(i){ml.splice(i,1);if(ci>=ml.length)ci=Math.max(0,ml.length-1);sML();renderML();}
+function mvM(i,d){
+  var j=i+d; if(j<0||j>=ml.length)return;
+  var tmp=ml[i];ml[i]=ml[j];ml[j]=tmp;
+  if(ci===i)ci=j;else if(ci===j)ci=i;
+  sML();renderML();
+}
+function playM(i){
+  ci=i;var m=ml[i];renderML();
+  socket.emit('cmd-play',{url:m.url,type:m.type,degree:m.degree||0,volume:vVo/100,muted:vMt});
+  vPl=true;vPa=0;vSt=Date.now();startVI();log('▶ '+m.name);
+  document.getElementById('sPill').textContent='شغّال';
 }
 
-// ─────────────────────────────
-//  AUDIO LIST
-// ─────────────────────────────
-function renderAL() {
-  var el = document.getElementById('audioList');
-  if (!al.length) { el.innerHTML = '<div class="empty-msg">لا يوجد أصوات</div>'; return; }
-  el.innerHTML = al.map(function(a, i) {
-    return '<div class="li">' +
-      '<div class="li-icon">🎵</div>' +
-      '<div class="li-info"><div class="li-name">' + esc(a.name) + '</div></div>' +
-      '<div class="li-acts">' +
-      '<button class="ib" style="background:rgba(188,140,255,.2);color:var(--pu)" onclick="playAItem('+i+')">▶</button>' +
-      '<button class="ib" style="background:rgba(248,81,73,.2);color:#f85149" onclick="delA('+i+')">✕</button>' +
+// ─── AUDIO LIST ───
+function renderAL(){
+  var el=document.getElementById('aList');
+  if(!al.length){el.innerHTML='<div class="empty">لا يوجد أصوات</div>';return;}
+  el.innerHTML=al.map(function(a,i){
+    return '<div class="li">'+
+      '<div class="li-ic">🎵</div>'+
+      '<div class="li-inf"><div class="li-n">'+esc(a.name)+'</div></div>'+
+      '<div class="li-a">'+
+      '<button class="ib" style="background:rgba(188,140,255,.2);color:var(--pu)" onclick="playAI('+i+')">▶</button>'+
+      '<button class="ib" style="background:rgba(248,81,73,.2);color:var(--rd)" onclick="delA('+i+')">✕</button>'+
       '</div></div>';
   }).join('');
-  var sel = document.getElementById('plAudioSel');
-  var prev = sel.value;
-  sel.innerHTML = '<option value="">-- بدون صوت --</option>' +
-    al.map(function(a,i){ return '<option value="'+i+'">'+esc(a.name)+'</option>'; }).join('');
-  if (prev) sel.value = prev;
+  var sel=document.getElementById('plASel'),prev=sel.value;
+  sel.innerHTML='<option value="">-- بدون صوت --</option>'+al.map(function(a,i){return'<option value="'+i+'">'+esc(a.name)+'</option>';}).join('');
+  if(prev)sel.value=prev;
 }
-function addAudio() {
-  var n = document.getElementById('aName').value.trim();
-  var u = document.getElementById('aLink').value.trim();
-  if (!n || !u) return alert('الاسم والرابط مطلوبين');
-  al.push({ name:n, url:u });
-  document.getElementById('aName').value = '';
-  document.getElementById('aLink').value = '';
-  sAL(); renderAL(); log('🎵 أُضيف: ' + n);
+function addA(){
+  var n=document.getElementById('aNm').value.trim(),u=document.getElementById('aLk').value.trim();
+  if(!n||!u)return alert('الاسم والرابط مطلوبين');
+  al.push({name:n,url:u});
+  document.getElementById('aNm').value='';document.getElementById('aLk').value='';
+  sAL();renderAL();log('🎵 أُضيف: '+n);
 }
-function delA(i) { al.splice(i,1); sAL(); renderAL(); }
-function playAItem(i) {
-  var a = al[i];
-  document.getElementById('aUrl').value = a.url;
-  socket.emit('audio-play', { url: a.url, v: aVol2/100 });
-  aPlaying = true; aPaused = 0; aStart = Date.now(); startAInt();
-  log('🎵 ▶ ' + a.name);
+function delA(i){al.splice(i,1);sAL();renderAL();}
+function playAI(i){
+  var a=al[i]; document.getElementById('aUr').value=a.url;
+  socket.emit('audio-play',{url:a.url,v:aVo/100});
+  aPl=true;aPa=0;aSt=Date.now();startAI();log('🎵 ▶ '+a.name);
 }
 
-// ─────────────────────────────
-//  PLAYLIST
-// ─────────────────────────────
-document.getElementById('plAudioOn').addEventListener('change', function() {
-  document.getElementById('plAudioRow').style.display = this.checked ? 'block' : 'none';
+// ─── PLAYLIST ───
+document.getElementById('plAOn').addEventListener('change',function(){
+  document.getElementById('plARow').style.display=this.checked?'block':'none';
 });
 
-function startCountdown() {
-  var secs = parseInt(document.getElementById('cdSecs').value) || 5;
-  socket.emit('countdown', { secs: secs });
-  log('⏳ بدأ العد التنازلي: ' + secs + ' ثانية');
-}
+function plTog(){ plAc ? plStop() : plStart(); }
 
-function plToggle() { plActive ? plStop() : plBegin(); }
-
-function plBegin() {
-  var items = ml.filter(function(m){ return m.inPL; });
-  if (!items.length) return log('اضغط ✅ على عناصر البلاي ليست أولاً');
-  plActive = true;
-  document.getElementById('plBtn').textContent = '⏹ وقّف';
-  document.getElementById('plBtn').className   = 'btn b-red';
-  if (document.getElementById('plAudioOn').checked) {
-    var si = document.getElementById('plAudioSel').value;
-    if (si !== '' && al[+si]) {
-      var a = al[+si];
-      document.getElementById('aUrl').value = a.url;
-      socket.emit('audio-restart', { url: a.url, v: aVol2/100 });
-      aPlaying = true; aPaused = 0; aStart = Date.now(); startAInt();
+function plStart(){
+  var items=ml.filter(function(m){return m.inPL;});
+  if(!items.length)return log('اضغط ✅ على عناصر البلاي ليست أولاً');
+  plAc=true; plPaused=false;
+  // لو كانت موقوفة وبنكمل — مش بنرجع plIx للصفر
+  document.getElementById('plBtn').textContent='⏹ وقّف';
+  document.getElementById('plBtn').className='btn b-rd';
+  if(document.getElementById('plAOn').checked){
+    var si=document.getElementById('plASel').value;
+    if(si!==''&&al[+si]){
+      var a=al[+si];
+      document.getElementById('aUr').value=a.url;
+      socket.emit('audio-restart',{url:a.url,v:aVo/100});
+      aPl=true;aPa=0;aSt=Date.now();startAI();
     }
   }
-  plPlayCur();
+  plPlay();
 }
 
-function plStop() {
-  plActive = false; clearTimeout(plTimer);
-  document.getElementById('plBtn').textContent = '▶▶ ابدأ';
-  document.getElementById('plBtn').className   = 'btn b-teal';
+function plStop(){
+  plAc=false; plPaused=true; clearTimeout(plTm);
+  document.getElementById('plBtn').textContent='▶▶ كمّل';
+  document.getElementById('plBtn').className='btn b-te';
   cmdPause();
-  if (document.getElementById('plAudioOn').checked) aStop();
-  log('⏹ البلاي ليست وقفت');
+  if(document.getElementById('plAOn').checked) aPause();
+  log('⏹ موقوف — اضغط كمّل للاستكمال');
 }
 
-function plReset() {
-  plActive = false; clearTimeout(plTimer); plIdx = 0;
-  document.getElementById('plBtn').textContent = '▶▶ ابدأ';
-  document.getElementById('plBtn').className   = 'btn b-teal';
+function plRst(){
+  plAc=false; plPaused=false; plIx=0; clearTimeout(plTm);
+  vOffset=0; // إعادة ضبط التايمر الكلي
+  document.getElementById('plBtn').textContent='▶▶ ابدأ';
+  document.getElementById('plBtn').className='btn b-te';
   cmdPause();
-  if (document.getElementById('plAudioOn').checked) aStop();
-  updVTimer(0); document.getElementById('vSeek').value = 0;
+  if(document.getElementById('plAOn').checked) aStop();
+  updVT(0); document.getElementById('vS').value=0;
   log('🔁 جاهز من الأول');
 }
 
-function plPlayCur() {
-  if (!plActive) return;
-  var items = ml.filter(function(m){ return m.inPL; });
-  if (!items.length || plIdx >= items.length) {
-    plStop(); log('✅ البلاي ليست خلصت'); return;
+function plPlay(){
+  if(!plAc)return;
+  var items=ml.filter(function(m){return m.inPL;});
+  if(!items.length||plIx>=items.length){
+    plAc=false; plPaused=false; plIx=0; vOffset=0;
+    document.getElementById('plBtn').textContent='▶▶ ابدأ';
+    document.getElementById('plBtn').className='btn b-te';
+    cmdPause(); log('✅ البلاي ليست خلصت'); return;
   }
-  var m = items[plIdx];
-  ci = ml.indexOf(m); renderML();
-  var isImg = (m.type === 'image' || m.type === 'image360');
-  vPlaying = !isImg; vPaused = 0; vStart = Date.now(); vDur = 0;
-  updVTimer(0); document.getElementById('vSeek').value = 0;
-  socket.emit('cmd-play', { url:m.url, type:m.type, degree:m.degree||0, volume:vVol/100, muted:vMuted });
-  if (!isImg) startVInt();
-  log('▶▶ ' + (plIdx+1) + '/' + items.length + ' — ' + m.name);
-  document.getElementById('statusPill').textContent = 'شغّال';
-  if (isImg) plTimer = setTimeout(plNextItem, 10000);
+  var m=items[plIx];
+  ci=ml.indexOf(m); renderML();
+  var isImg=(m.type==='image'||m.type==='image360');
+  // أضف مدة الفيديو السابق للـ offset
+  if(plIx>0) vOffset+=vDr;
+  vPl=!isImg; vPa=0; vSt=Date.now(); vDr=0;
+  updVT(0); document.getElementById('vS').value=0;
+  socket.emit('cmd-play',{url:m.url,type:m.type,degree:m.degree||0,volume:vVo/100,muted:vMt});
+  if(!isImg) startVI();
+  log('▶▶ '+(plIx+1)+'/'+items.length+' — '+m.name);
+  document.getElementById('sPill').textContent='شغّال';
+  if(isImg) plTm=setTimeout(plNx,10000);
 }
 
-function plNextItem() {
-  if (!plActive) return;
-  clearTimeout(plTimer); plIdx++; plPlayCur();
+function plNx(){
+  if(!plAc)return;
+  clearTimeout(plTm); plIx++; plPlay();
 }
 
-// ─────────────────────────────
-//  HELPERS
-// ─────────────────────────────
-function log(m) { document.getElementById('sbar').textContent = m; }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
-function pad(n) { return String(n).padStart(2,'0'); }
-function fmt(t) { if(t<0)t=0; return pad(Math.floor(t/3600))+':'+pad(Math.floor((t%3600)/60))+':'+pad(Math.floor(t%60)); }
-function fmtShort(t) { if(t<0)t=0; return pad(Math.floor(t/60)%60)+':'+pad(Math.floor(t%60)); }
+function startCD(){
+  var s=parseInt(document.getElementById('cdN').value)||5;
+  socket.emit('countdown',{secs:s}); log('⏳ عد: '+s+' ثانية');
+}
+
+// ─── HELPERS ───
+function log(m){document.getElementById('sb').textContent=m;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function pad(n){return String(n).padStart(2,'0');}
+function fmt(t){if(t<0)t=0;return pad(Math.floor(t/3600))+':'+pad(Math.floor((t%3600)/60))+':'+pad(Math.floor(t%60));}
+function fmtS(t){if(t<0)t=0;return pad(Math.floor(t/60)%60)+':'+pad(Math.floor(t%60));}
 
 renderML(); renderAL();
 </script>
