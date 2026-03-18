@@ -268,10 +268,18 @@ var TI={video:'🌐',videoFlat:'🎬',image:'🖼',image360:'🌐'};
 
 var DEF=[{name:'جولة المعبد',type:'video',degree:0,inPL:false,url:'https://res.cloudinary.com/dqxj0qisf/video/upload/v1772873701/360%C2%BA_virtual_tour_Tabernacle_in_the_times_of_Moses_1_prth6w.mp4'}];
 var ml=[], al=[];
+// حمّل من localStorage مؤقتاً — هيتغير لو السيرفر عنده بيانات
 try{ml=JSON.parse(localStorage.getItem('ml2'))||DEF.slice();}catch(e){ml=DEF.slice();}
 try{al=JSON.parse(localStorage.getItem('al2'))||[];}catch(e){al=[];}
-function sML(){try{localStorage.setItem('ml2',JSON.stringify(ml));}catch(e){} socket.emit('save-lists',{mediaList:ml,audioList:al});}
-function sAL(){try{localStorage.setItem('al2',JSON.stringify(al));}catch(e){} socket.emit('save-lists',{mediaList:ml,audioList:al});}
+function sML(){
+  try{localStorage.setItem('ml2',JSON.stringify(ml));}catch(e){}
+  // حفظ على السيرفر دايماً
+  if(roomId) socket.emit('save-lists',{mediaList:ml,audioList:al});
+}
+function sAL(){
+  try{localStorage.setItem('al2',JSON.stringify(al));}catch(e){}
+  if(roomId) socket.emit('save-lists',{mediaList:ml,audioList:al});
+}
 
 // ─── CONNECTION ───
 
@@ -413,24 +421,23 @@ function setVol(v){ vVo=+v; document.getElementById('vVv').textContent=v+'%'; so
 function togMute(){ vMt=!vMt; document.getElementById('mBtn').textContent=vMt?'🔊':'🔇'; socket.emit('cmd-vol',{v:vVo/100,m:vMt}); }
 
 // تايمر الفيديو — بيفضل يعد ومش بيرجع للصفر لو الفيديو اتعاد
-var vOffset=0; // إجمالي الثواني اللي اتشالت من بدايات سابقة
+var vOffset=0;
 function startVI(){
   clearInterval(vIn);
   vIn=setInterval(function(){
     if(!vPl||!vSt)return;
-    var t=(Date.now()-vSt)/1000 + vOffset;
+    var cur=(Date.now()-vSt)/1000; // وقت الفيديو الحالي
     if(!vDg){
-      document.getElementById('vT').textContent=fmt(t);
-      document.getElementById('vC').textContent=fmtS((Date.now()-vSt)/1000);
-      if(vDr>0) document.getElementById('vS').value=((Date.now()-vSt)/1000/vDr)*100;
+      document.getElementById('vT').textContent=fmt(vOffset+cur);
+      document.getElementById('vC').textContent=fmtS(cur);
+      if(vDr>0) document.getElementById('vS').value=(cur/vDr)*100;
     }
-    // بلاي ليست: لما الفيديو يخلص
-    if(plAc&&vDr>0&&(Date.now()-vSt)/1000>=vDr-0.8){clearInterval(vIn);plNx();}
+    if(plAc&&vDr>0&&cur>=vDr-0.8){clearInterval(vIn);plNx();}
   },200);
 }
 function updVT(t){
   if(t<0)t=0;
-  document.getElementById('vT').textContent=fmt(vOffset+t);
+  document.getElementById('vT').textContent=fmt(plAc?vOffset+t:t);
   document.getElementById('vC').textContent=fmtS(t);
 }
 
@@ -638,25 +645,35 @@ function plPlay(){
     plAc=false; plPaused=false; plIx=0; vOffset=0;
     document.getElementById('plBtn').textContent='▶▶ ابدأ';
     document.getElementById('plBtn').className='btn b-te';
-    cmdPause(); log('✅ البلاي ليست خلصت'); return;
+    cmdPause();
+    if(document.getElementById('plAOn').checked) aPause();
+    log('✅ البلاي ليست خلصت'); return;
   }
   var m=items[plIx];
   ci=ml.indexOf(m); renderML();
   var isImg=(m.type==='image'||m.type==='image360');
-  // أضف مدة الفيديو السابق للـ offset
-  if(plIx>0) vOffset+=vDr;
   vPl=!isImg; vPa=0; vSt=Date.now(); vDr=0;
-  updVT(0); document.getElementById('vS').value=0;
+  document.getElementById('vS').value=0;
+  // التايمر بيكمل من آخر offset بدون ما يرجع للصفر
+  document.getElementById('vT').textContent=fmt(vOffset);
+  document.getElementById('vC').textContent='00:00';
   socket.emit('cmd-play',{url:m.url,type:m.type,degree:m.degree||0,volume:vVo/100,muted:vMt});
   if(!isImg) startVI();
   log('▶▶ '+(plIx+1)+'/'+items.length+' — '+m.name);
   document.getElementById('sPill').textContent='شغّال';
-  if(isImg) plTm=setTimeout(plNx,10000);
+  if(isImg){
+    vOffset+=10; // الصور 10 ثواني
+    plTm=setTimeout(plNx,10000);
+  }
 }
 
 function plNx(){
   if(!plAc)return;
-  clearTimeout(plTm); plIx++; plPlay();
+  clearTimeout(plTm);
+  // أضف مدة الفيديو الحالي للـ offset قبل ما نعدي
+  if(vDr>0) vOffset+=vDr;
+  else if(vSt) vOffset+=(Date.now()-vSt)/1000;
+  plIx++; plPlay();
 }
 
 function startCD(){
