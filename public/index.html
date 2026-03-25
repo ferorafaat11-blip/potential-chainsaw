@@ -119,7 +119,7 @@ a-scene { width:100vw; height:100vh; }
   <a-sky         id="sky" src=""       visible="false" radius="100"></a-sky>
   <a-image       id="img" src=""       width="5" height="3" position="0 1.6 -4" visible="false"></a-image>
   <a-entity id="rig" rotation="0 0 0">
-    <a-camera look-controls="touchEnabled:true;magicWindowTrackingEnabled:true" wasd-controls="enabled:false">
+    <a-camera look-controls="touchEnabled:true;magicWindowTrackingEnabled:true;deviceOrientationPermissionUI:false" wasd-controls="enabled:false">
       <a-cursor id="cur" color="#fbbf24" radius="0.004"
         geometry="primitive:ring;radiusInner:0.003;radiusOuter:0.007"
         material="color:#fbbf24;shader:flat"></a-cursor>
@@ -147,7 +147,6 @@ var dname = /iPhone|iPad/i.test(navigator.userAgent) ? '📱 iPhone' :
             /Windows/i.test(navigator.userAgent)      ? '💻 Windows' : '📟 جهاز';
 
 // إخفاء الـ cursor على iOS و Android في وضع VR
-var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 var isAndroid = /Android/i.test(navigator.userAgent);
 if (isIOS) {
   var cur = document.getElementById('cur');
@@ -182,6 +181,8 @@ socket.emit('join-viewer', { name: dname });
 socket.on('connect', function() { socket.emit('join-viewer', { name: dname }); });
 
 socket.on('welcome', function(d) {
+  // حفظ الـ state كـ pending عشان لما يختار الوضع يطبقه
+  if (d.media && d.media.url) pending = Object.assign({}, d.media, { serverTime: d.serverTime });
   if (d.open) {
     clearInterval(joinInt);
     started = true;
@@ -218,21 +219,24 @@ function showMode() {
   socket.emit('viewer-status', { s: 'اختيار وضع' });
 }
 
+var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
 function startMode(m) {
   curMode = m;
   document.getElementById('mode').style.display  = 'none';
   scene.style.display = 'block';
   document.getElementById('swBtn').style.display = 'block';
   socket.emit('viewer-status', { s: m === 'vr' ? 'VR' : 'عادي' });
-  // طلب إذن الـ gyroscope على iOS 13+ و Android
   if (typeof DeviceOrientationEvent !== 'undefined' &&
       typeof DeviceOrientationEvent.requestPermission === 'function') {
-    DeviceOrientationEvent.requestPermission().then(function(state) {
-      if (state === 'granted') { /* تمام */ }
-    }).catch(function(){});
+    DeviceOrientationEvent.requestPermission().then(function(state) {}).catch(function(){});
   }
-  if (m === 'vr') scene.enterVR();
-  if (pending) applyMedia(pending);
+  if (m === 'vr' && !isIOS) {
+    scene.enterVR();
+    setTimeout(function() { if (pending) applyMedia(pending); }, 800);
+  } else {
+    if (pending) applyMedia(pending);
+  }
 }
 
 scene.addEventListener('exit-vr', function() { curMode = 'normal'; });
