@@ -411,7 +411,14 @@ function cmdReset(){
   socket.emit('cmd-seek',{t:0}); socket.emit('cmd-pause');
   vPl=false; vPa=0; vSt=null; updVT(0); document.getElementById('vS').value=0; log('⏮ من الأول');
 }
-function cmdSync(){ socket.emit('cmd-sync'); log('⚡ Sync'); }
+function cmdSync(){
+  // إصلاح الـ startedAt عشان الأجهزة تتزامن صح
+  if(vPl && vSt){
+    var corrected = Date.now() - ((Date.now()-vSt)/1000)*1000;
+    vSt = Date.now() - (Date.now()-vSt);
+  }
+  socket.emit('cmd-sync'); log('⚡ Sync');
+}
 function doVS(v){
   var t=(v/100)*vDr;
   vSt=Date.now()-(t*1000); vPa=t;
@@ -432,7 +439,7 @@ function startVI(){
       document.getElementById('vC').textContent=fmtS(cur);
       if(vDr>0) document.getElementById('vS').value=(cur/vDr)*100;
     }
-    if(plAc&&vDr>0&&cur>=vDr-0.8){clearInterval(vIn);plNx();}
+    if(plAc&&vDr>0&&cur>=vDr-0.8){clearInterval(vIn);vPl=false;plNx();}
   },200);
 }
 function updVT(t){
@@ -646,7 +653,7 @@ function plPlay(){
     document.getElementById('plBtn').textContent='▶▶ ابدأ';
     document.getElementById('plBtn').className='btn b-te';
     cmdPause();
-    if(document.getElementById('plAOn').checked) aPause();
+    if(document.getElementById('plAOn').checked) audioFadeOut();
     log('✅ البلاي ليست خلصت'); return;
   }
   var m=items[plIx];
@@ -674,6 +681,28 @@ function plNx(){
   if(vDr>0) vOffset+=vDr;
   else if(vSt) vOffset+=(Date.now()-vSt)/1000;
   plIx++; plPlay();
+}
+
+function audioFadeOut(){
+  if(!aPl) return;
+  var steps=20, delay=100;
+  var startVol=aVo/100;
+  var step=0;
+  var fadeInt=setInterval(function(){
+    step++;
+    var v=startVol*(1-step/steps);
+    if(v<=0||step>=steps){
+      clearInterval(fadeInt);
+      aStop();
+      // إرجاع الـ volume للقيمة الأصلية بعد الوقف
+      aVo=Math.round(startVol*100);
+      document.getElementById('aVl').value=aVo;
+      document.getElementById('aVv').textContent=aVo+'%';
+      socket.emit('audio-vol',{v:aVo/100});
+    } else {
+      socket.emit('audio-vol',{v:v});
+    }
+  },delay);
 }
 
 function startCD(){
