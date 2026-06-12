@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة عجلة الحظ التفاعلية</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --accent-color: #e94560;
+            --text-color: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #00fff0;
+            text-shadow: 0 0 10px rgba(0,255,240,0.5);
+            margin-bottom: 10px;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        /* تصميم العجلة والمؤشر */
+        .wheel-container {
+            position: relative;
+            margin: 30px auto;
+            width: 360px;
+            height: 360px;
+        }
+
+        .pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid #fff;
+            z-index: 10;
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));
+        }
+
+        canvas {
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(0,0,0,0.6), 0 0 40px rgba(0,255,240,0.2);
+            transition: transform 4s cubic-bezier(0.1, 0.8, 0.1, 1);
+        }
+
+        button {
+            background: linear-gradient(45deg, #00fff0, #0081ff);
+            border: none;
+            color: #1a1a2e;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,255,240,0.4);
+            transition: 0.3s ease;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 25px rgba(0,255,240,0.6);
+        }
+
+        button:disabled {
+            background: #555;
+            color: #888;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        /* النوافذ المنبثقة للأسئلة */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.85);
+            z-index: 20;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0,255,240,0.3);
+            border: 2px solid #00fff0;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .category-title {
+            font-size: 18px;
+            color: #ff007f;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .question-text {
+            font-size: 22px;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background-color: rgba(255,255,255,0.05);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            text-align: right;
+            transition: 0.3s;
+        }
+
+        .option-btn:hover {
+            background-color: rgba(0,255,240,0.1);
+            border-color: #00fff0;
+        }
+
+        /* حالات الإجابة */
+        .option-btn.correct {
+            background-color: #21bf73 !important;
+            border-color: #21bf73 !important;
+            color: white;
+        }
+
+        .option-btn.wrong {
+            background-color: #ff4b5c !important;
+            border-color: #ff4b5c !important;
+            color: white;
+        }
+
+        .feedback-text {
+            margin-top: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            min-height: 25px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎮 مسابقة عجلة الحظ 🎮</h1>
+    <div class="container">
+        <div class="wheel-container">
+            <div class="pointer"></div>
+            <canvas id="wheel" width="360" height="360"></canvas>
+        </div>
+        <button id="spinBtn" onclick="spinWheel()">لف العجلة! 🎡</button>
+    </div>
+
+    <!-- نافذة الأسئلة المتغيرة -->
+    <div id="quizModal" class="modal">
+        <div class="modal-content">
+            <div id="modalCategory" class="category-title"></div>
+            <div id="modalQuestion" class="question-text"></div>
+            <div id="modalOptions" class="options-container"></div>
+            <div id="modalFeedback" class="feedback-text"></div>
+            <button id="nextBtn" style="display:none; margin: 20px auto 0;" onclick="closeModal()">العودة للعجلة 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        // الأقسام الستة والألوان
+        const categories = ["رياضي", "know yourself", "الينور", "جغرافيا", "معلومات تاريخية", "ضربة حظ"];
+        const colors = ["#ff007f", "#711c91", "#133e7c", "#0abf53", "#ff9f1c", "#00fff0"];
+        
+        // بنك الأسئلة المدمج بالكامل
+        const quizBank = {
+            "know yourself": [
+                { q: "المشاعر هي:", options: ["أفكار منطقية عن الموقف", "استجابات جسدية ونفسية نمر بها تجاه موقف أو شخص", "قرارات نتخذها بإرادتنا", "حقائق علمية"], answer: "استجابات جسدية ونفسية نمر بها تجاه موقف أو شخص", type: "mcq" },
+                { q: "الفرق الأساسي بين 'الفكرة' و 'الشعور' إن:", options: ["الاثنين نفس الشيء", "الفكرة في الرأس، والشعور في الجسم", "الشعور دايمًا صح والفكرة دايمًا غلط", "الفكرة تأخذ وقت والشعور لا"], answer: "الفكرة في الرأس، والشعور في الجسم", type: "mcq" },
+                { q: "من المشاعر الأساسية الـ 6 حسب علم النفس:", options: ["الملل - الفضول - الندم", "الفرح - الحزن - الغضب - الخوف - الاشمئزاز - المفاجأة", "الثقة - الغيرة - الطمع", "الحماس - التوتر - الكسل"], answer: "الفرح - الحزن - الغضب - الخوف - الاشمئزاز - المفاجأة", type: "mcq" },
+                { q: "أي من التالي يعتبر شعور إيجابي؟", options: ["القلق", "الامتنان", "الإحباط", "الرفض"], answer: "الامتنان", type: "mcq" },
+                { q: "المشاعر بتأثر على سلوكنا إزاي؟", options: ["مش بتأثر خالص", "بتخلينا نتصرف بدون ما نفكر في النتائج", "بتحدد طريقة كلامنا وقراراتنا وردود أفعالنا", "بتوقف تفكيرنا تمامًا"], answer: "بتحدد طريقة كلامنا وقراراتنا وردود أفعالنا", type: "mcq" }
+            ],
+            "الينور": [
+                { q: "كل المشاعر السلبية زي الغضب والحزن لازم نتخلص منها فورًا.", options: ["صح", "غلط"], answer: "غلط", feedback: "المشاعر كلها ليها دور وبتدينا رسائل مهمة، المهم نتعامل معاها صح.", type: "tf" },
+                { q: "ممكن نحس بأكتر من شعور في نفس الوقت.", options: ["صح", "غلط"], answer: "صح", feedback: "اسمها 'مشاعر مختلطة'، زي الفرح مع الخوف قبل امتحان.", type: "tf" },
+                { q: "لو أنكرت مشاعري يبقى كده هتختفي.", options: ["صح", "غلط"], answer: "غلط", feedback: "إنكار المشاعر بيخليها أقوى وتظهر في تصرفاتنا بطريقة مش صحية.", type: "tf" },
+                { q: "فهم مشاعري أول خطوة عشان أتحكم في ردود أفعالي.", options: ["صح", "غلط"], answer: "صح", feedback: "الوعي بالمشاعر = أول خطوة للتحكم فيها.", type: "tf" },
+                { q: "الرجالة مابيحسوش بنفس قوة المشاعر اللي البنات بتحس بيها.", options: ["صح", "غلط"], answer: "غلط", feedback: "كل البشر عندهم نفس المشاعر، الفرق في طريقة التعبير بس.", type: "tf" },
+                { q: "المشاعر بتطلع فجأة ومفيش حاجة بتسببها.", options: ["صح", "غلط"], answer: "غلط", feedback: "كل شعور ليه 'مُحفز' أو موقف فكّرنا فيه هو اللي ولّده.", type: "tf" },
+                { q: "لما أسمي شعوري بصوت عالي 'أنا حاسس بغضب' ده بيقلل حدته.", options: ["صح", "غلط"], answer: "صح", feedback: "دي اسمها تسمية المشاعر، وبتخلي المخ يهدأ.", type: "tf" },
+                { q: "الشخص القوي هو اللي عمره ما يعيط أو يبين ضعفه.", options: ["صح", "غلط"], answer: "غلط", feedback: "القوة إنك تحس بمشاعرك وتتعامل معاها، العياط تفريغ صحي.", type: "tf" },
+                { q: "ممكن نغير شعورنا لو غيرنا أفكارنا عن الموقف.", options: ["صح", "غلط"], answer: "صح", feedback: "الأفكار بتولد المشاعر، فتغيير الفكرة بيغير الشعور.", type: "tf" },
+                { q: "لو حد قالك 'متزعلش' يبقى زعلك هيروح فورًا.", options: ["صح", "غلط"], answer: "غلط", feedback: "المشاعرمش زرار، محتاجة وقت وتفهم عشان تهدى.", type: "tf" }
+            ],
+            "رياضي": [
+                { q: "ما هو المنتخب الأكثر تتويجاً ببطولة كأس العالم؟", options: ["البرازيل", "ألمانيا", "الأرجنتين", "إيطاليا"], answer: "البرازيل", type: "mcq" },
+                { q: "من هو اللاعب الأكثر تسجيلاً للأهداف في تاريخ كأس العالم؟", options: ["ميروسلاف كلوزه", "رونالدو البرازيلي", "ميسي", "بيليه"], answer: "ميروسلاف كلوزه", type: "mcq" },
+                { q: "كم عدد المنتخبات المشاركة في كأس العالم بداية من عام 2026؟", options: ["32 منتخب", "48 منتخب", "40 منتخب", "64 منتخب"], answer: "48 منتخب", type: "mcq" },
+                { q: "ما هو النادي الأكثر فوزاً ببطولة دوري أبطال أوروبا؟", options: ["ريال مدريد", "ميلان", "ليفربول", "برشلونة"], answer: "ريال مدريد", type: "mcq" },
+                { q: "من هو الهداف التاريخي لبطولة دوري أبطال أوروبا؟", options: ["كريستيانو رونالدو", "ليونيل ميسي", "كريم بنزيما", "ليفاندوفسكي"], answer: "كريستيانو رونالدو", type: "mcq" }
+            ],
+            "جغرافيا": [
+                { q: "ما هي أكبر دولة في العالم من حيث المساحة؟", options: ["روسيا", "كندا", "الصين", "أمريكا"], answer: "روسيا", type: "mcq" },
+                { q: "ما هو المحيط الأكبر في العالم؟", options: ["المحيط الهادئ", "المحيط الأطلسي", "المحيط الهندي", "المحيط المتجمد"], answer: "المحيط الهادئ", type: "mcq" },
+                { q: "أي دولة يمر بها خط الاستواء وتضم أعلى قمة جبلية فيها؟", options: ["الإكوادور", "البرازيل", "كينيا", "إندونيسيا"], answer: "الإكوادور", type: "mcq" },
+                { q: "كم عدد قارات العالم؟", options: ["5 قارات", "6 قارات", "7 قارات", "8 قارات"], answer: "7 قارات", type: "mcq" }
+            ],
+            "معلومات تاريخية": [
+                { q: "ما هو الحدث الذي يُعد الشرارة الأولى لاندلاع الحرب العالمية الأولى؟", options: ["اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند", "غزو بولندا", "سقوط جدار برلين", "قنبلة هيروشيما"], answer: "اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند", type: "mcq" },
+                { q: "في أي عام سقط جدار برلين؟", options: ["1985", "1989", "1991", "1995"], answer: "1989", type: "mcq" },
+                { q: "ما اسم الثورة التي أطاحت بحكم القياصرة في روسيا عام 1917؟", options: ["الثورة الفرنسية", "الثورة البلشفية", "الثورة الصناعية", "الثورة المجيدة"], answer: "الثورة البلشفية", type: "mcq" },
+                { q: "من كان أول رئيس للولايات المتحدة الأمريكية؟", options: ["جورج واشنطن", "أبراهام لينكون", "توماس جيفرسون", "جون آدامز"], answer: "جورج واشنطن", type: "mcq" },
+                { q: "ما هي المعركة التي انتهت بهزيمة نابليون بونابرت نهائياً عام 1815؟", options: ["معركة واترلو", "معركة ماراثون", "معركة ترالفالجار", "معركة ليبزيج"], answer: "معركة واترلو", type: "mcq" }
+            ],
+            "ضربة حظ": [
+                { q: "سمّع مزمور: اللهم تراءف عليَّ يا الله كعظيم رحمتك. 🙏" },
+                { q: "قل أسماء 5 شخصيات كتابية في 10 ثوانٍ. ⏱️" },
+                { q: "اعمل تمثال لمدة 15 ثانية. 🗿" },
+                { q: "اتكلم كأنك مذيع نشرة أخبار لمدة دقيقة. 🎙️" },
+                { q: "قول آية تحفظها من غير ما تتردد. 📖" },
+                { q: "امشِ كأنك روبوت حتى نهاية الجولة. 🤖" },
+                { q: "اعمل صوت ديك 3 مرات. 🐓" },
+                { q: "قل أسماء 5 أسفار من الكتاب المقدس بسرعة. 📚" },
+                { q: "اتكلم بالفصحى للسؤال القادم. 📜" },
+                { q: "قلد شخصية كتابية والباقي يخمنها. 🎭" },
+                { q: "ردد وراء المجموعة: 'أنا عبقري بس الحظ مش معايا' 3 مرات. 😂" },
+                { q: "قول 3 ترانيم تبدأ بحرف معين. 🎶" },
+                { q: "قف على رجل واحدة لمدة 20 ثانية. 🤸" },
+                { q: "اعمل ابتسامه عريضة حتى نهاية السؤال التالي. 😁" },
+                { q: "قل أسماء التلاميذ الذين تتذكرهم في 15 ثانية. ✝️" },
+                { q: "صفّق 10 مرات بإيقاع منتظم. 👏" },
+                { q: "اتكلم بصوت منخفض جدًا لمدة سؤال كامل. 🤫" },
+                { q: "سمّع جزءًا من أي مزمور تحفظه.  " },
+                { q: "قل 'مبروك للفائز' وكأنك مذيع مباراة. ⚽" },
+                { q: "اعمل حركة رياضية يكررها الجميع. 🏋️" },
+                { q: "قل 3 معجزات للسيد المسيح. ✨" },
+                { q: "تحدث كأنك طفل صغير لمدة دقيقة. 👶" },
+                { q: "اذكر 5 أنبياء من العهد القديم. 👳" },
+                { q: "قل ترنيمة من غير لحن والباقي يخمنها. 🎤" },
+                { q: "اعمل مشية بطيئة جدًا حتى مقعدك. 🐢" },
+                { q: "اذكر 3 فضائل مسيحية بسرعة. 💎" },
+                { q: "قل اسم 10 أسفار في 20 ثانية. ⏱️" }
+            ]
+        };
+
+        // إعداد لوحة الرسم (Canvas) للعجلة
+        const canvas = document.getElementById("wheel");
+        const ctx = canvas.getContext("2d");
+        const numSegments = categories.length;
+        const segmentAngle = (2 * Math.PI) / numSegments;
+        let currentRotation = 0;
+
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < numSegments; i++) {
+                ctx.beginPath();
+                ctx.fillStyle = colors[i];
+                ctx.moveTo(180, 180);
+                ctx.arc(180, 180, 180, i * segmentAngle, (i + 1) * segmentAngle);
+                ctx.lineTo(180, 180);
+                ctx.fill();
+                ctx.stroke();
+
+                // إضافة نصوص الأقسام داخل العجلة
+                ctx.save();
+                ctx.translate(180, 180);
+                ctx.rotate(i * segmentAngle + segmentAngle / 2);
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 14px Segoe UI";
+                ctx.textAlign = "right";
+                ctx.fillText(categories[i], 160, 5);
+                ctx.restore();
+            }
+        }
+        drawWheel();
+
+        // منطق الدوران والـ Logic التفاعلي
+        function spinWheel() {
+            const btn = document.getElementById("spinBtn");
+            btn.disabled = true;
+
+            const extraSpins = 5 + Math.floor(Math.random() * 5); 
+            const randomAngle = Math.random() * 2 * Math.PI;
+            const totalTargetRotation = currentRotation + (extraSpins * 2 * Math.PI) + randomAngle;
+
+            canvas.style.transform = `rotate(${totalTargetRotation}rad)`;
+            currentRotation = totalTargetRotation;
+
+            // حساب القسم الفائز بدقة بناءً على زاوية الوقوف والمؤشر العلوي
+            setTimeout(() => {
+                const normalizedAngle = (2 * Math.PI - (totalTargetRotation % (2 * Math.PI))) % (2 * Math.PI);
+                // تعديل زاوية المؤشر العلوي (بمقدار 90 درجة أو 1.57 راديان)
+                const pointerCorrectedAngle = (normalizedAngle + Math.PI / 2) % (2 * Math.PI);
+                const winningIndex = Math.floor(pointerCorrectedAngle / segmentAngle);
+                
+                openQuiz(categories[winningIndex]);
+                btn.disabled = false;
+            }, 4000); 
+        }
+
+        // فتح السؤال بناء على القسم الفائز
+        function openQuiz(category) {
+            const modal = document.getElementById("quizModal");
+            const catTitle = document.getElementById("modalCategory");
+            const qText = document.getElementById("modalQuestion");
+            const optionsBox = document.getElementById("modalOptions");
+            const feedback = document.getElementById("modalFeedback");
+            const nextBtn = document.getElementById("nextBtn");
+
+            catTitle.innerText = `القسم المختار: ${category}`;
+            feedback.innerText = "";
+            optionsBox.innerHTML = "";
+            nextBtn.style.display = "none";
+
+            const questions = quizBank[category];
+            if (!questions || questions.length === 0) {
+                qText.innerText = "خلصت أسئلة القسم ده! لف تاني.";
+                nextBtn.style.display = "block";
+                modal.style.display = "flex";
+                return;
+            }
+
+            // سحب سؤال عشوائي من القسم المتوقف عليه
+            const randomIndex = Math.floor(Math.random() * questions.length);
+            const questionObj = questions[randomIndex];
+
+            qText.innerText = questionObj.q;
+
+            // لو القسم "ضربة حظ" بيظهر كـ تحدي بدون زراير إجابة
+            if (category === "ضربة حظ") {
+                feedback.innerText = "نفذ التحدي المطلوب واضغط عودة للعب مجدداً!";
+                feedback.style.color = "#00fff0";
+                nextBtn.style.display = "block";
+            } else {
+                // توليد أزرار الاختيارات للأسئلة العادية (اختيار من متعدد وصح وغلط)
+                questionObj.options.forEach(opt => {
+                    const button = document.createElement("button");
+                    button.classList.add("option-btn");
+                    button.innerText = opt;
+                    button.onclick = () => checkAnswer(button, opt, questionObj.answer, questionObj.feedback);
+                    optionsBox.appendChild(button);
+                });
+            }
+
+            modal.style.display = "flex";
+        }
+
+        // التحقق من صحة الإجابة وتلوين الزراير
+        function checkAnswer(selectedBtn, selectedOption, correctOption, feedbackMsg) {
+            const allButtons = document.querySelectorAll(".option-btn");
+            const feedback = document.getElementById("modalFeedback");
+            const nextBtn = document.getElementById("nextBtn");
+
+            // تجميد الأزرار بعد الاختيار
+            allButtons.forEach(btn => btn.disabled = true);
+
+            if (selectedOption === correctOption) {
+                selectedBtn.classList.add("correct");
+                feedback.innerText = "إجابة صحيحة! برافو عيك 🥳🎉";
+                feedback.style.color = "#21bf73";
+                playTone(523.25, 0.2); // نغمة الفوز
+            } else {
+                selectedBtn.classList.add("wrong");
+                feedback.innerText = `إجابة خاطئة! ❌`;
+                feedback.style.color = "#ff4b5c";
+                playTone(150, 0.4); // نغمة الخطأ
+
+                // إظهار الإجابة الصح
+                allButtons.forEach(btn => {
+                    if (btn.innerText === correctOption) btn.classList.add("correct");
+                });
+            }
+
+            if (feedbackMsg) {
+                feedback.innerHTML += `<br><small style="color:#aaa; font-weight:normal;">💡 ${feedbackMsg}</small>`;
+            }
+
+            nextBtn.style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("quizModal").style.display = "none";
+        }
+
+        // تأثير صوتي مدمج بدون ملفات خارجية باستخدام الـ Web Audio API
+        function playTone(freq, duration) {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.frequency.value = freq;
+            oscillator.type = 
