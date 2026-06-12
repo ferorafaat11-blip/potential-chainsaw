@@ -26,16 +26,16 @@
 
         .logo-text {
             color: var(--accent-color);
-            font-size: 38px;
+            font-size: 42px;
             font-weight: bold;
-            margin: 5px 0 0 0;
+            margin: 10px 0 0 0;
             letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(255,159,28,0.4);
+            text-shadow: 0 0 15px rgba(255,159,28,0.5);
         }
 
         .sub-title {
             color: #ffffff;
-            font-size: 20px;
+            font-size: 22px;
             margin: 0 0 20px 0;
             opacity: 0.9;
         }
@@ -50,12 +50,12 @@
 
         .wheel-container {
             position: relative;
-            margin: 30px auto;
+            margin: 40px auto;
             width: 360px;
             height: 360px;
         }
 
-        /* سهم المؤشر العلوي الثابت بدقة */
+        /* سهم المؤشر العلوي الثابت بدقة في المنتصف */
         .pointer {
             position: absolute;
             top: -20px;
@@ -212,12 +212,10 @@
     </div>
 
     <script>
-        // الأقسام الخمسة الحالية
         const categories = ["رياضي", "know yourself", "جغرافيا", "معلومات تاريخية", "ضربة حظ"];
-        // ألوان متناسقة وفخمة مع الـ Theme الداكن
         const colors = ["#ff4b5c", "#711c91", "#0abf53", "#ff9f1c", "#00fff0"];
         
-        // استدعاء مؤثرات صوتية حقيقية ومباشرة من السيرفر لتخطي حجب المتصفحات
+        // ملفات صوتية حقيقية ومباشرة من الإنترنت
         const tickSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav");
         const winSound = new Audio("https://assets.mixkit.co/active_storage/sfx/1435/1435-84.wav");
         const loseSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2958/2958-84.wav");
@@ -244,7 +242,7 @@
                 { q: "كم عدد قارات العالم؟", options: ["5 قارات", "6 قارات", "7 قارات", "8 قارات"], answer: "7 قارات" }
             ],
             "معلومات تاريخية": [
-                { q: "ما هو الحدث الذي يُعد الشرارة الأولى لاندلاع الحرب العالمية الأولى؟", options: ["اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند", "غزو بولندا", "سقوط جدار برلين", "قنبلة هيروشيما"], answer: "اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند" },
+                { q: "ما هو الحدث الذي يُعد الشرارة الأولى لاندلاع الحرب العالمية الأولى؟", options: ["اغتيال ولي عهد النمسا الأرشيدوق franz ferdinand", "غزو بولندا", "سقوط جدار برلين", "قنبلة هيروشيما"], answer: "اغتيال ولي عهد النمسا الأرشيدوق franz ferdinand" },
                 { q: "في أي عام سقط جدار برلين؟", options: ["1985", "1989", "1991", "1995"], answer: "1989" },
                 { q: "ما اسم الثورة التي أطاحت بحكم القياصرة في روسيا عام 1917؟", options: ["الثورة الفرنسية", "الثورة البلشفية", "الثورة الصناعية", "الثورة المجيدة"], answer: "الثورة البلشفية" },
                 { q: "من كان أول رئيس للولايات المتحدة الأمريكية؟", options: ["جورج واشنطن", "أبراهام لينكون", "توماس جيفرسون", "جون آدامز"], answer: "جورج واشنطن" },
@@ -316,9 +314,10 @@
             const btn = document.getElementById("spinBtn");
             btn.disabled = true;
 
+            // اختيار عشوائي مسبق للقسم
             const winningIndex = Math.floor(Math.random() * numSegments);
             
-            // قفل الحسبة هندسياً: الوقوف في منتصف الخانة تماماً وضبط اتجاه الـ Canvas
+            // ضبط الوقوف في منتصف الخانة بالملي لتفادي الوقوف بين قسمين
             const targetAngle = (numSegments - winningIndex) * segmentAngle - (segmentAngle / 2);
             const extraSpins = 8 * 2 * Math.PI; 
             const totalTargetRotation = extraSpins + targetAngle;
@@ -435,4 +434,3 @@
     </script>
 </body>
 </html>
-
