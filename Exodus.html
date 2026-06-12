@@ -55,7 +55,6 @@
             height: 360px;
         }
 
-        /* سهم المؤشر العلوي الثابت بدقة في المنتصف */
         .pointer {
             position: absolute;
             top: -20px;
@@ -215,7 +214,6 @@
         const categories = ["رياضي", "know yourself", "جغرافيا", "معلومات تاريخية", "ضربة حظ"];
         const colors = ["#ff4b5c", "#711c91", "#0abf53", "#ff9f1c", "#00fff0"];
         
-        // ملفات صوتية حقيقية ومباشرة من الإنترنت
         const tickSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav");
         const winSound = new Audio("https://assets.mixkit.co/active_storage/sfx/1435/1435-84.wav");
         const loseSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2958/2958-84.wav");
@@ -314,10 +312,9 @@
             const btn = document.getElementById("spinBtn");
             btn.disabled = true;
 
-            // اختيار عشوائي مسبق للقسم
             const winningIndex = Math.floor(Math.random() * numSegments);
             
-            // ضبط الوقوف في منتصف الخانة بالملي لتفادي الوقوف بين قسمين
+            // معادلة السنتر الفعلي المقفول بالملي بدون أي خطأ هندسي
             const targetAngle = (numSegments - winningIndex) * segmentAngle - (segmentAngle / 2);
             const extraSpins = 8 * 2 * Math.PI; 
             const totalTargetRotation = extraSpins + targetAngle;
