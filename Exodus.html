@@ -40,23 +40,24 @@
 
         .wheel-container {
             position: relative;
-            margin: 30px auto;
+            margin: 40px auto;
             width: 360px;
             height: 360px;
         }
 
+        /* سهم المؤشر العلوي يشير لأسفل بدقة */
         .pointer {
             position: absolute;
-            top: -15px;
+            top: -25px;
             left: 50%;
             transform: translateX(-50%);
             width: 0;
             height: 0;
             border-left: 15px solid transparent;
             border-right: 15px solid transparent;
-            border-top: 30px solid #fff;
+            border-top: 30px solid #ffffff;
             z-index: 10;
-            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.6));
         }
 
         canvas {
@@ -198,48 +199,37 @@
     </div>
 
     <script>
-        const categories = ["رياضي", "know yourself", "الينور", "جغرافيا", "معلومات تاريخية", "ضربة حظ"];
-        const colors = ["#ff007f", "#711c91", "#133e7c", "#0abf53", "#ff9f1c", "#00fff0"];
+        // الأقسام الخمسة الحالية بعد إزالة الينور
+        const categories = ["رياضي", "know yourself", "جغرافيا", "معلومات تاريخية", "ضربة حظ"];
+        const colors = ["#ff007f", "#711c91", "#0abf53", "#ff9f1c", "#00fff0"];
         
         const quizBank = {
             "know yourself": [
-                { q: "المشاعر هي:", options: ["أفكار منطقية عن الموقف", "استجابات جسدية ونفسية نمر بها تجاه موقف أو شخص", "قرارات نتخذها بإرادتنا", "حقائق علمية"], answer: "استجابات جسدية ونفسية نمر بها تجاه موقف أو شخص", type: "mcq" },
-                { q: "الفرق الأساسي بين 'الفكرة' و 'الشعور' إن:", options: ["الاثنين نفس الشيء", "الفكرة في الرأس، والشعور في الجسم", "الشعور دايمًا صح والفكرة دايمًا غلط", "الفكرة تأخذ وقت والشعور لا"], answer: "الفكرة في الرأس، والشعور في الجسم", type: "mcq" },
-                { q: "من المشاعر الأساسية الـ 6 حسب علم النفس:", options: ["الملل - الفضول - الندم", "الفرح - الحزن - الغضب - الخوف - الاشمئزاز - المفاجأة", "الثقة - الغيرة - الطمع", "الحماس - التوتر - الكسل"], answer: "الفرح - الحزن - الغضب - الخوف - الاشمئزاز - المفاجأة", type: "mcq" },
-                { q: "أي من التالي يعتبر شعور إيجابي؟", options: ["القلق", "الامتنان", "الإحباط", "الرفض"], answer: "الامتنان", type: "mcq" },
-                { q: "المشاعر بتأثر على سلوكنا إزاي؟", options: ["مش بتأثر خالص", "بتخلينا نتصرف بدون ما نفكر في النتائج", "بتحدد طريقة كلامنا وقراراتنا وردود أفعالنا", "بتوقف تفكيرنا تمامًا"], answer: "بتحدد طريقة كلامنا وقراراتنا وردود أفعالنا", type: "mcq" }
-            ],
-            "الينور": [
-                { q: "كل المشاعر السلبية زي الغضب والحزن لازم نتخلص منها فورًا.", options: ["صح", "غلط"], answer: "غلط", feedback: "المشاعر كلها ليها دور وبتدينا رسائل مهمة، المهم نتعامل معاها صح.", type: "tf" },
-                { q: "ممكن نحس بأكتر من شعور في نفس الوقت.", options: ["صح", "غلط"], answer: "صح", feedback: "اسمها 'مشاعر مختلطة'، زي الفرح مع الخوف قبل امتحان.", type: "tf" },
-                { q: "لو أنكرت مشاعري يبقى كده هتختفي.", options: ["صح", "غلط"], answer: "غلط", feedback: "إنكار المشاعر بيخليها أقوى وتظهر في تصرفاتنا بطريقة مش صحية.", type: "tf" },
-                { q: "فهم مشاعري أول خطوة عشان أتحكم في ردود أفعالي.", options: ["صح", "غلط"], answer: "صح", feedback: "الوعي بالمشاعر = أول خطوة للتحكم فيها.", type: "tf" },
-                { q: "الرجالة مابيحسوش بنفس قوة المشاعر اللي البنات بتحس بيها.", options: ["صح", "غلط"], answer: "غلط", feedback: "كل البشر عندهم نفس المشاعر، الفرق في طريقة التعبير بس.", type: "tf" },
-                { q: "المشاعر بتطلع فجأة ومفيش حاجة بتسببها.", options: ["صح", "غلط"], answer: "غلط", feedback: "كل شعور ليه 'مُحفز' أو موقف فكّرنا فيه هو اللي ولّده.", type: "tf" },
-                { q: "لما أسمي شعوري بصوت عالي 'أنا حاسس بغضب' ده بيقلل حدته.", options: ["صح", "غلط"], answer: "صح", feedback: "دي اسمها تسمية المشاعر، وبتخلي المخ يهدأ.", type: "tf" },
-                { q: "الشخص القوي هو اللي عمره ما يعيط أو يبين ضعفه.", options: ["صح", "غلط"], answer: "غلط", feedback: "القوة إنك تحس بمشاعرك وتتعامل معاها، العياط تفريغ صحي.", type: "tf" },
-                { q: "ممكن نغير شعورنا لو غيرنا أفكارنا عن الموقف.", options: ["صح", "غلط"], answer: "صح", feedback: "الأفكار بتولد المشاعر، فتغيير الفكرة بيغير الشعور.", type: "tf" },
-                { q: "لو حد قالك 'متزعلش' يبقى زعلك هيروح فورًا.", options: ["صح", "غلط"], answer: "غلط", feedback: "المشاعرمش زرار، محتاجة وقت وتفهم عشان تهدى.", type: "tf" }
+                { q: "المشاعر هي:", options: ["أفكار منطقية عن الموقف", "استجابات جسدية ونفسية نمر بها تجاه موقف أو شخص", "قرارات نتخذها بإرادتنا", "حقائق علمية"], answer: "استجابات جسدية ونفسية نمر بها تجاه موقف أو شخص" },
+                { q: "الفرق الأساسي بين 'الفكرة' و 'الشعور' إن:", options: ["الاثنين نفس الشيء", "الفكرة في الرأس، والشعور في الجسم", "الشعور دايمًا صح والفكرة دايمًا غلط", "الفكرة تأخذ وقت والشعور لا"], answer: "الفكرة في الرأس، والشعور في الجسم" },
+                { q: "من المشاعر الأساسية الـ 6 حسب علم النفس:", options: ["الملل - الفضول - الندم", "الفرح - الحزن - الغضب - الخوف - الاشمئزاز - المفاجأة", "الثقة - الغيرة - الطمع", "الحماس - التوتر - الكسل"], answer: "الفرح - الحزن - الغضب - الخوف - الاشمئزاز - المفاجأة" },
+                { q: "أي من التالي يعتبر شعور إيجابي؟", options: ["القلق", "الامتنان", "الإحباط", "الرفض"], answer: "الامتنان" },
+                { q: "المشاعر بتأثر على سلوكنا إزاي؟", options: ["مش بتأثر خالص", "بتخلينا نتصرف بدون ما نفكر في النتائج", "بتحدد طريقة كلامنا وقراراتنا وردود أفعالنا", "بتوقف تفكيرنا تمامًا"], answer: "بتحدد طريقة كلامنا وقراراتنا وردود أفعالنا" }
             ],
             "رياضي": [
-                { q: "ما هو المنتخب الأكثر تتويجاً ببطولة كأس العالم؟", options: ["البرازيل", "ألمانيا", "الأرجنتين", "إيطاليا"], answer: "البرازيل", type: "mcq" },
-                { q: "من هو اللاعب الأكثر تسجيلاً للأهداف في تاريخ كأس العالم؟", options: ["ميروسلاف كلوزه", "رونالدو البرازيلي", "ميسي", "بيليه"], answer: "ميروسلاف كلوزه", type: "mcq" },
-                { q: "كم عدد المنتخبات المشاركة في كأس العالم بداية من عام 2026؟", options: ["32 منتخب", "48 منتخب", "40 منتخب", "64 منتخب"], answer: "48 منتخب", type: "mcq" },
-                { q: "ما هو النادي الأكثر فوزاً ببطولة دوري أبطال أوروبا؟", options: ["ريال مدريد", "ميلان", "ليفربول", "برشلونة"], answer: "ريال مدريد", type: "mcq" },
-                { q: "من هو الهداف التاريخي لبطولة دوري أبطال أوروبا؟", options: ["كريستيانو رونالدو", "ليونيل ميسي", "كريم بنزيما", "ليفاندوفسكي"], answer: "كريستيانو رونالدو", type: "mcq" }
+                { q: "ما هو المنتخب الأكثر تتويجاً ببطولة كأس العالم؟", options: ["البرازيل", "ألمانيا", "الأرجنتين", "إيطاليا"], answer: "البرازيل" },
+                { q: "من هو اللاعب الأكثر تسجيلاً للأهداف في تاريخ كأس العالم؟", options: ["ميروسلاف كلوزه", "رونالدو البرازيلي", "ميسي", "بيليه"], answer: "ميروسلاف كلوزه" },
+                { q: "كم عدد المنتخبات المشاركة في كأس العالم بداية من عام 2026؟", options: ["32 منتخب", "48 منتخب", "40 منتخب", "64 منتخب"], answer: "48 منتخب" },
+                { q: "ما هو النادي الأكثر فوزاً ببطولة دوري أبطال أوروبا؟", options: ["ريال مدريد", "ميلان", "ليفربول", "برشلونة"], answer: "ريال مدريد" },
+                { q: "من هو الهداف التاريخي لبطولة دوري أبطال أوروبا؟", options: ["كريستيانو رونالدو", "ليونيل ميسي", "كريم بنزيما", "ليفاندوفسكي"], answer: "كريستيانو رونالدو" }
             ],
             "جغرافيا": [
-                { q: "ما هي أكبر دولة في العالم من حيث المساحة؟", options: ["روسيا", "كندا", "الصين", "أمريكا"], answer: "روسيا", type: "mcq" },
-                { q: "ما هو المحيط الأكبر في العالم? ", options: ["المحيط الهادئ", "المحيط الأطلسي", "المحيط الهندي", "المحيط المتجمد"], answer: "المحيط الهادئ", type: "mcq" },
-                { q: "أي دولة يمر بها خط الاستواء وتضم أعلى قمة جبلية فيها؟", options: ["الإكوادور", "البرازيل", "كينيا", "إندونيسيا"], answer: "الإكوادور", type: "mcq" },
-                { q: "كم عدد قارات العالم؟", options: ["5 قارات", "6 قارات", "7 قارات", "8 قارات"], answer: "7 قارات", type: "mcq" }
+                { q: "ما هي أكبر دولة في العالم من حيث المساحة؟", options: ["روسيا", "كندا", "الصين", "أمريكا"], answer: "روسيا" },
+                { q: "ما هو المحيط الأكبر في العالم؟", options: ["المحيط الهادئ", "المحيط الأطلسي", "المحيط الهندي", "المحيط المتجمد"], answer: "المحيط الهادئ" },
+                { q: "أي دولة يمر بها خط الاستواء وتضم أعلى قمة جبلية فيها؟", options: ["الإكوادور", "البرازيل", "كينيا", "إندونيسيا"], answer: "الإكوادور" },
+                { q: "كم عدد قارات العالم؟", options: ["5 قارات", "6 قارات", "7 قارات", "8 قارات"], answer: "7 قارات" }
             ],
             "معلومات تاريخية": [
-                { q: "ما هو الحدث الذي يُعد الشرارة الأولى لاندلاع الحرب العالمية الأولى؟", options: ["اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند", "غزو بولندا", "سقوط جدار برلين", "قنبلة هيروشيما"], answer: "اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند", type: "mcq" },
-                { q: "في أي عام سقط جدار برلين؟", options: ["1985", "1989", "1991", "1995"], answer: "1989", type: "mcq" },
-                { q: "ما اسم الثورة التي أطاحت بحكم القياصرة في روسيا عام 1917؟", options: ["الثورة الفرنسية", "الثورة البلشفية", "الثورة الصناعية", "الثورة المجيدة"], answer: "الثورة البلشفية", type: "mcq" },
-                { q: "من كان أول رئيس للولايات المتحدة الأمريكية؟", options: ["جورج واشنطن", "أبراهام لينكون", "توماس جيفرسون", "جون آدامز"], answer: "جورج واشنطن", type: "mcq" },
-                { q: "ما هي المعركة التي انتهت بهزيمة نابليون بونابرت نهائياً عام 1815؟", options: ["معركة واترلو", "معركة ماراثون", "معركة ترالفالجار", "معركة ليبزيج"], answer: "معركة واترلو", type: "mcq" }
+                { q: "ما هو الحدث الذي يُعد الشرارة الأولى لاندلاع الحرب العالمية الأولى؟", options: ["اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند", "غزو بولندا", "سقوط جدار برلين", "قنبلة هيروشيما"], answer: "اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند" },
+                { q: "في أي عام سقط جدار برلين؟", options: ["1985", "1989", "1991", "1995"], answer: "1989" },
+                { q: "ما اسم الثورة التي أطاحت بحكم القياصرة في روسيا عام 1917؟", options: ["الثورة الفرنسية", "الثورة البلشفية", "الثورة الصناعية", "الثورة المجيدة"], answer: "الثورة البلشفية" },
+                { q: "من كان أول رئيس للولايات المتحدة الأمريكية؟", options: ["جورج واشنطن", "أبراهام لينكون", "توماس جيفرسون", "جون آدامز"], answer: "جورج واشنطن" },
+                { q: "ما هي المعركة التي انتهت بهزيمة نابليون بونابرت نهائياً عام 1815؟", options: ["معركة واترلو", "معركة ماراثون", "معركة ترالفالجار", "معركة ليبزيج"], answer: "معركة واترلو" }
             ],
             "ضربة حظ": [
                 { q: "سمّع مزمور: اللهم تراءف عليَّ يا الله كعظيم رحمتك. 🙏" },
@@ -259,7 +249,7 @@
                 { q: "قل أسماء التلاميذ الذين تتذكرهم في 15 ثانية. ✝️" },
                 { q: "صفّق 10 مرات بإيقاع منتظم. 👏" },
                 { q: "اتكلم بصوت منخفض جدًا لمدة سؤال كامل. 🤫" },
-                { q: "سمّع جزءًا من أي مزمور تحفظه.  " },
+                { q: "سمّع جزءًا من أي مزمور تحفظه. " },
                 { q: "قل 'مبروك للفائز' وكأنك مذيع مباراة. ⚽" },
                 { q: "اعمل حركة رياضية يكررها الجميع. 🏋️" },
                 { q: "قل 3 معجزات للسيد المسيح. ✨" },
@@ -278,6 +268,7 @@
         const segmentAngle = (2 * Math.PI) / numSegments;
         let currentRotation = 0;
 
+        // رسم العجلة بحيث تبدأ التقسيمات متناسقة هندسياً
         function drawWheel() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             for (let i = 0; i < numSegments; i++) {
@@ -305,17 +296,21 @@
             const btn = document.getElementById("spinBtn");
             btn.disabled = true;
 
-            const extraSpins = 5 + Math.floor(Math.random() * 5); 
+            const extraSpins = 6 + Math.floor(Math.random() * 4); 
             const randomAngle = Math.random() * 2 * Math.PI;
+            
+            // إضافة زاوية الدوران الكلية بشكل تراكمي
             const totalTargetRotation = currentRotation + (extraSpins * 2 * Math.PI) + randomAngle;
-
+            
             canvas.style.transform = `rotate(${totalTargetRotation}rad)`;
             currentRotation = totalTargetRotation;
 
             setTimeout(() => {
-                const normalizedAngle = (2 * Math.PI - (totalTargetRotation % (2 * Math.PI))) % (2 * Math.PI);
-                const pointerCorrectedAngle = (normalizedAngle + Math.PI / 2) % (2 * Math.PI);
-                const winningIndex = Math.floor(pointerCorrectedAngle / segmentAngle);
+                // تعديل رياضي دقيق لحساب المؤشر العلوي (بزاوية 270 درجة عكس عقارب الساعة ليتطابق السهم مع المصفوفة)
+                const actualAngle = (totalTargetRotation % (2 * Math.PI));
+                const pointerAngle = (3 * Math.PI / 2 - actualAngle + 2 * Math.PI) % (2 * Math.PI);
+                
+                const winningIndex = Math.floor(pointerAngle / segmentAngle);
                 
                 openQuiz(categories[winningIndex]);
                 btn.disabled = false;
@@ -357,7 +352,7 @@
                     const button = document.createElement("button");
                     button.classList.add("option-btn");
                     button.innerText = opt;
-                    button.onclick = () => checkAnswer(button, opt, questionObj.answer, questionObj.feedback);
+                    button.onclick = () => checkAnswer(button, opt, questionObj.answer);
                     optionsBox.appendChild(button);
                 });
             }
@@ -365,7 +360,7 @@
             modal.style.display = "flex";
         }
 
-        function checkAnswer(selectedBtn, selectedOption, correctOption, feedbackMsg) {
+        function checkAnswer(selectedBtn, selectedOption, correctOption) {
             const allButtons = document.querySelectorAll(".option-btn");
             const feedback = document.getElementById("modalFeedback");
             const nextBtn = document.getElementById("nextBtn");
@@ -374,7 +369,7 @@
 
             if (selectedOption === correctOption) {
                 selectedBtn.classList.add("correct");
-                feedback.innerText = "إجابة صحيحة! برافو عيك 🥳🎉";
+                feedback.innerText = "إجابة صحيحة! برافو عليك 🥳🎉";
                 feedback.style.color = "#21bf73";
                 playTone(523.25, 0.2); 
             } else {
@@ -388,10 +383,6 @@
                 });
             }
 
-            if (feedbackMsg) {
-                feedback.innerHTML += `<br><small style="color:#aaa; font-weight:normal;">💡 ${feedbackMsg}</small>`;
-            }
-
             nextBtn.style.display = "block";
         }
 
@@ -400,17 +391,19 @@
         }
 
         function playTone(freq, duration) {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            oscillator.frequency.value = freq;
-            oscillator.type = "sine";
-            oscillator.start();
-            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-            oscillator.stop(audioCtx.currentTime + duration);
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.frequency.value = freq;
+                oscillator.type = "sine";
+                oscillator.start();
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                oscillator.stop(audioCtx.currentTime + duration);
+            } catch(e) { console.log("Audio node error context"); }
         }
     </script>
 </body>
