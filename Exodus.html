@@ -45,10 +45,10 @@
             height: 360px;
         }
 
-        /* سهم المؤشر العلوي يشير لأسفل بدقة */
+        /* سهم المؤشر العلوي الثابت بدقة */
         .pointer {
             position: absolute;
-            top: -25px;
+            top: -20px;
             left: 50%;
             transform: translateX(-50%);
             width: 0;
@@ -63,7 +63,7 @@
         canvas {
             border-radius: 50%;
             box-shadow: 0 0 20px rgba(0,0,0,0.6), 0 0 40px rgba(0,255,240,0.2);
-            transition: transform 4s cubic-bezier(0.1, 0.8, 0.1, 1);
+            transition: transform 4s cubic-bezier(0.25, 0.1, 0.1, 1);
         }
 
         button {
@@ -199,7 +199,7 @@
     </div>
 
     <script>
-        // الأقسام الخمسة الحالية بعد إزالة الينور
+        // الترتيب هنا يطابق رسم الدائرة تماماً باتجاه حركة الساعة لضمان التطابق
         const categories = ["رياضي", "know yourself", "جغرافيا", "معلومات تاريخية", "ضربة حظ"];
         const colors = ["#ff007f", "#711c91", "#0abf53", "#ff9f1c", "#00fff0"];
         
@@ -226,7 +226,7 @@
             ],
             "معلومات تاريخية": [
                 { q: "ما هو الحدث الذي يُعد الشرارة الأولى لاندلاع الحرب العالمية الأولى؟", options: ["اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند", "غزو بولندا", "سقوط جدار برلين", "قنبلة هيروشيما"], answer: "اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند" },
-                { q: "في أي عام سقط جدار برلين؟", options: ["1985", "1989", "1991", "1995"], answer: "1989" },
+                { q: "في أي عام سقط جدار برلين？", options: ["1985", "1989", "1991", "1995"], answer: "1989" },
                 { q: "ما اسم الثورة التي أطاحت بحكم القياصرة في روسيا عام 1917؟", options: ["الثورة الفرنسية", "الثورة البلشفية", "الثورة الصناعية", "الثورة المجيدة"], answer: "الثورة البلشفية" },
                 { q: "من كان أول رئيس للولايات المتحدة الأمريكية؟", options: ["جورج واشنطن", "أبراهام لينكون", "توماس جيفرسون", "جون آدامز"], answer: "جورج واشنطن" },
                 { q: "ما هي المعركة التي انتهت بهزيمة نابليون بونابرت نهائياً عام 1815؟", options: ["معركة واترلو", "معركة ماراثون", "معركة ترالفالجار", "معركة ليبزيج"], answer: "معركة واترلو" }
@@ -268,21 +268,24 @@
         const segmentAngle = (2 * Math.PI) / numSegments;
         let currentRotation = 0;
 
-        // رسم العجلة بحيث تبدأ التقسيمات متناسقة هندسياً
+        // رسم العجلة مع ضبط نقطة الصفر هندسياً لتتوافق مع حسابات الـ Canvas
         function drawWheel() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             for (let i = 0; i < numSegments; i++) {
                 ctx.beginPath();
                 ctx.fillStyle = colors[i];
                 ctx.moveTo(180, 180);
-                ctx.arc(180, 180, 180, i * segmentAngle, (i + 1) * segmentAngle);
+                // الحساب يبدأ من الزاوية العلوية لتسهيل مطابقة السهم
+                let startAngle = i * segmentAngle - Math.PI / 2;
+                let endAngle = (i + 1) * segmentAngle - Math.PI / 2;
+                ctx.arc(180, 180, 180, startAngle, endAngle);
                 ctx.lineTo(180, 180);
                 ctx.fill();
                 ctx.stroke();
 
                 ctx.save();
                 ctx.translate(180, 180);
-                ctx.rotate(i * segmentAngle + segmentAngle / 2);
+                ctx.rotate(i * segmentAngle + segmentAngle / 2 - Math.PI / 2);
                 ctx.fillStyle = "#ffffff";
                 ctx.font = "bold 14px Segoe UI";
                 ctx.textAlign = "right";
@@ -296,22 +299,20 @@
             const btn = document.getElementById("spinBtn");
             btn.disabled = true;
 
-            const extraSpins = 6 + Math.floor(Math.random() * 4); 
-            const randomAngle = Math.random() * 2 * Math.PI;
+            // اختيار قسم فائز عشوائي أولاً بشكل مسبق لضمان النتيجة 100%
+            const winningIndex = Math.floor(Math.random() * numSegments);
             
-            // إضافة زاوية الدوران الكلية بشكل تراكمي
-            const totalTargetRotation = currentRotation + (extraSpins * 2 * Math.PI) + randomAngle;
+            // حساب الزاوية المطلوبة بدقة لكي يقف هذا القسم تحت السهم العلوي تماماً
+            const targetAngle = (numSegments - winningIndex) * segmentAngle;
+            const extraSpins = 6 * 2 * Math.PI; // 6 لفات كاملة للمؤثرات البصرية
             
+            const totalTargetRotation = extraSpins + targetAngle;
+
             canvas.style.transform = `rotate(${totalTargetRotation}rad)`;
             currentRotation = totalTargetRotation;
 
+            // إظهار السؤال المطابق للقسم المختار بعد انتهاء الـ Animation
             setTimeout(() => {
-                // تعديل رياضي دقيق لحساب المؤشر العلوي (بزاوية 270 درجة عكس عقارب الساعة ليتطابق السهم مع المصفوفة)
-                const actualAngle = (totalTargetRotation % (2 * Math.PI));
-                const pointerAngle = (3 * Math.PI / 2 - actualAngle + 2 * Math.PI) % (2 * Math.PI);
-                
-                const winningIndex = Math.floor(pointerAngle / segmentAngle);
-                
                 openQuiz(categories[winningIndex]);
                 btn.disabled = false;
             }, 4000); 
@@ -388,6 +389,12 @@
 
         function closeModal() {
             document.getElementById("quizModal").style.display = "none";
+            // إعادة تدوير خفيفة للـ Canvas عشان العجلة ما تبدأش دايماً من الصفر
+            canvas.style.transition = "none";
+            canvas.style.transform = `rotate(${currentRotation % (2 * Math.PI)}rad)`;
+            setTimeout(() => {
+                canvas.style.transition = "transform 4s cubic-bezier(0.25, 0.1, 0.1, 1)";
+            }, 50);
         }
 
         function playTone(freq, duration) {
@@ -403,7 +410,7 @@
                 gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
                 oscillator.stop(audioCtx.currentTime + duration);
-            } catch(e) { console.log("Audio node error context"); }
+            } catch(e) { console.log("Audio API not supported or blocked"); }
         }
     </script>
 </body>
