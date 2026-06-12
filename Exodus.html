@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لعبة عجلة الحظ التفاعلية</title>
+    <title>Exodus - عجلة الحظ التفاعلية</title>
     <style>
         :root {
-            --bg-color: #1a1a2e;
-            --card-bg: #16213e;
-            --accent-color: #e94560;
+            --bg-color: #0b0b16;
+            --card-bg: #12122c;
+            --accent-color: #ff9f1c;
             --text-color: #ffffff;
         }
 
@@ -24,10 +24,20 @@
             min-height: 100vh;
         }
 
-        h1 {
-            color: #00fff0;
-            text-shadow: 0 0 10px rgba(0,255,240,0.5);
-            margin-bottom: 10px;
+        .logo-text {
+            color: var(--accent-color);
+            font-size: 38px;
+            font-weight: bold;
+            margin: 5px 0 0 0;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255,159,28,0.4);
+        }
+
+        .sub-title {
+            color: #ffffff;
+            font-size: 20px;
+            margin: 0 0 20px 0;
+            opacity: 0.9;
         }
 
         .container {
@@ -40,12 +50,12 @@
 
         .wheel-container {
             position: relative;
-            margin: 40px auto;
+            margin: 30px auto;
             width: 360px;
             height: 360px;
         }
 
-        /* السهم الأبيض العلوي */
+        /* سهم المؤشر العلوي الثابت بدقة */
         .pointer {
             position: absolute;
             top: -20px;
@@ -62,31 +72,31 @@
 
         canvas {
             border-radius: 50%;
-            box-shadow: 0 0 20px rgba(0,0,0,0.6), 0 0 40px rgba(0,255,240,0.2);
+            box-shadow: 0 0 25px rgba(0,0,0,0.8), 0 0 50px rgba(255,159,28,0.15);
             transition: transform 4s cubic-bezier(0.2, 0.8, 0.1, 1);
         }
 
         button {
-            background: linear-gradient(45deg, #00fff0, #0081ff);
+            background: linear-gradient(45deg, #ff9f1c, #ff4b5c);
             border: none;
-            color: #1a1a2e;
-            padding: 15px 40px;
-            font-size: 20px;
+            color: #ffffff;
+            padding: 15px 45px;
+            font-size: 22px;
             font-weight: bold;
             border-radius: 30px;
             cursor: pointer;
-            box-shadow: 0 5px 15px rgba(0,255,240,0.4);
+            box-shadow: 0 5px 15px rgba(255,159,28,0.4);
             transition: 0.3s ease;
             margin-top: 15px;
         }
 
         button:hover {
             transform: scale(1.05);
-            box-shadow: 0 5px 25px rgba(0,255,240,0.6);
+            box-shadow: 0 5px 25px rgba(255,159,28,0.6);
         }
 
         button:disabled {
-            background: #555;
+            background: #444;
             color: #888;
             box-shadow: none;
             cursor: not-allowed;
@@ -96,7 +106,7 @@
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.85);
+            background-color: rgba(0,0,0,0.9);
             z-index: 20;
             justify-content: center;
             align-items: center;
@@ -105,51 +115,52 @@
 
         .modal-content {
             background-color: var(--card-bg);
-            padding: 30px;
+            padding: 35px;
             border-radius: 20px;
             width: 90%;
             max-width: 500px;
             text-align: center;
-            box-shadow: 0 0 30px rgba(0,255,240,0.3);
-            border: 2px solid #00fff0;
+            box-shadow: 0 0 30px rgba(255,159,28,0.2);
+            border: 2px solid var(--accent-color);
             animation: fadeIn 0.5s ease;
         }
 
         .category-title {
-            font-size: 18px;
-            color: #ff007f;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 10px;
+            font-size: 20px;
+            color: var(--accent-color);
+            font-weight: bold;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255,159,28,0.2);
+            padding-bottom: 10px;
         }
 
         .question-text {
-            font-size: 22px;
+            font-size: 24px;
             margin-bottom: 25px;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         .options-container {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 14px;
         }
 
         .option-btn {
             background-color: rgba(255,255,255,0.05);
             color: #fff;
             border: 1px solid rgba(255,255,255,0.1);
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 18px;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 19px;
             cursor: pointer;
             text-align: right;
-            transition: 0.3s;
+            transition: 0.2s;
         }
 
         .option-btn:hover {
-            background-color: rgba(0,255,240,0.1);
-            border-color: #00fff0;
+            background-color: rgba(255,159,28,0.15);
+            border-color: var(--accent-color);
         }
 
         .option-btn.correct {
@@ -165,8 +176,8 @@
         }
 
         .feedback-text {
-            margin-top: 15px;
-            font-size: 18px;
+            margin-top: 20px;
+            font-size: 20px;
             font-weight: bold;
             min-height: 25px;
         }
@@ -179,13 +190,15 @@
 </head>
 <body>
 
-    <h1>🎮 مسابقة عجلة الحظ 🎮</h1>
+    <div class="logo-text">Єxodus</div>
+    <div class="sub-title">شباب خريجين موسى النبي</div>
+
     <div class="container">
         <div class="wheel-container">
             <div class="pointer"></div>
             <canvas id="wheel" width="360" height="360"></canvas>
         </div>
-        <button id="spinBtn" onclick="spinWheel()">لف العجلة! 🎡</button>
+        <button id="spinBtn" onclick="spinWheel()">ابدأ الدوران! 🎡</button>
     </div>
 
     <div id="quizModal" class="modal">
@@ -194,15 +207,17 @@
             <div id="modalQuestion" class="question-text"></div>
             <div id="modalOptions" class="options-container"></div>
             <div id="modalFeedback" class="feedback-text"></div>
-            <button id="nextBtn" style="display:none; margin: 20px auto 0;" onclick="closeModal()">العودة للعجلة 🔄</button>
+            <button id="nextBtn" style="display:none; margin: 25px auto 0;" onclick="closeModal()">العودة للعجلة 🔄</button>
         </div>
     </div>
 
     <script>
+        // الأقسام الخمسة الحالية
         const categories = ["رياضي", "know yourself", "جغرافيا", "معلومات تاريخية", "ضربة حظ"];
-        const colors = ["#ff007f", "#711c91", "#0abf53", "#ff9f1c", "#00fff0"];
+        // ألوان متناسقة وفخمة مع الـ Theme الداكن
+        const colors = ["#ff4b5c", "#711c91", "#0abf53", "#ff9f1c", "#00fff0"];
         
-        // استدعاء ملفات صوتية حقيقية ومباشرة من السيرفر لتخطي حجب المتصفحات
+        // استدعاء مؤثرات صوتية حقيقية ومباشرة من السيرفر لتخطي حجب المتصفحات
         const tickSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav");
         const winSound = new Audio("https://assets.mixkit.co/active_storage/sfx/1435/1435-84.wav");
         const loseSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2958/2958-84.wav");
@@ -217,7 +232,7 @@
             ],
             "رياضي": [
                 { q: "ما هو المنتخب الأكثر تتويجاً ببطولة كأس العالم؟", options: ["البرازيل", "ألمانيا", "الأرجنتين", "إيطاليا"], answer: "البرازيل" },
-                { q: "من هو اللاعب الأكثر تسجيلاً للأهداف في تاريخ كأس العالم？", options: ["ميروسلاف كلوزه", "رونالدو البرازيلي", "ميسي", "بيليه"], answer: "ميروسلاف كلوزه" },
+                { q: "من هو اللاعب الأكثر تسجيلاً للأهداف في تاريخ كأس العالم؟", options: ["ميروسلاف كلوزه", "رونالدو البرازيلي", "ميسي", "بيليه"], answer: "ميروسلاف كلوزه" },
                 { q: "كم عدد المنتخبات المشاركة في كأس العالم بداية من عام 2026؟", options: ["32 منتخب", "48 منتخب", "40 منتخب", "64 منتخب"], answer: "48 منتخب" },
                 { q: "ما هو النادي الأكثر فوزاً ببطولة دوري أبطال أوروبا؟", options: ["ريال مدريد", "ميلان", "ليفربول", "برشلونة"], answer: "ريال مدريد" },
                 { q: "من هو الهداف التاريخي لبطولة دوري أبطال أوروبا؟", options: ["كريستيانو رونالدو", "ليونيل ميسي", "كريم بنزيما", "ليفاندوفسكي"], answer: "كريستيانو رونالدو" }
@@ -289,7 +304,7 @@
                 ctx.translate(180, 180);
                 ctx.rotate(i * segmentAngle + segmentAngle / 2 - Math.PI / 2);
                 ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 14px Segoe UI";
+                ctx.font = "bold 15px Segoe UI";
                 ctx.textAlign = "right";
                 ctx.fillText(categories[i], 160, 5);
                 ctx.restore();
@@ -301,17 +316,15 @@
             const btn = document.getElementById("spinBtn");
             btn.disabled = true;
 
-            // اختيار العشوائي المسبق
             const winningIndex = Math.floor(Math.random() * numSegments);
             
-            // معادلة السنتر بالملي: نقف في نص القوس بالضبط ونطرح الإزاحة لتجنب الوقوف على الفواصل
+            // قفل الحسبة هندسياً: الوقوف في منتصف الخانة تماماً وضبط اتجاه الـ Canvas
             const targetAngle = (numSegments - winningIndex) * segmentAngle - (segmentAngle / 2);
-            const extraSpins = 8 * 2 * Math.PI; // 8 لفات كاملة للمتعة البصرية
+            const extraSpins = 8 * 2 * Math.PI; 
             const totalTargetRotation = extraSpins + targetAngle;
 
             canvas.style.transform = `rotate(${totalTargetRotation}rad)`;
             
-            // تشغيل تكة الصوت المتزامنة بشكل ديناميكي مذهل
             let duration = 4000;
             let start = performance.now();
             let lastTickProgress = 0;
@@ -320,12 +333,11 @@
                 let elapsed = now - start;
                 if (elapsed < duration) {
                     let progress = elapsed / duration;
-                    // كود لتسريع الصوت وبطئه بالتزامن مع حركة العجلة
                     let currentAngleProgress = Math.floor((totalTargetRotation * (1 - Math.pow(1 - progress, 3))) / (segmentAngle / 2));
                     
                     if (currentAngleProgress !== lastTickProgress) {
                         tickSound.currentTime = 0;
-                        tickSound.play().catch(e => {}); // يتخطى حظر المتصفح لأن المستخدم داس فعلاً
+                        tickSound.play().catch(e => {}); 
                         lastTickProgress = currentAngleProgress;
                     }
                     requestAnimationFrame(runAudioTicks);
@@ -369,7 +381,7 @@
 
             if (category === "ضربة حظ") {
                 feedback.innerText = "نفذ التحدي المطلوب واضغط عودة للعب مجدداً!";
-                feedback.style.color = "#00fff0";
+                feedback.style.color = "#ff9f1c";
                 nextBtn.style.display = "block";
             } else {
                 questionObj.options.forEach(opt => {
