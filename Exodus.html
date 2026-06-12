@@ -45,7 +45,7 @@
             height: 360px;
         }
 
-        /* سهم المؤشر العلوي الثابت بدقة */
+        /* السهم الأبيض العلوي */
         .pointer {
             position: absolute;
             top: -20px;
@@ -202,6 +202,11 @@
         const categories = ["رياضي", "know yourself", "جغرافيا", "معلومات تاريخية", "ضربة حظ"];
         const colors = ["#ff007f", "#711c91", "#0abf53", "#ff9f1c", "#00fff0"];
         
+        // استدعاء ملفات صوتية حقيقية ومباشرة من السيرفر لتخطي حجب المتصفحات
+        const tickSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav");
+        const winSound = new Audio("https://assets.mixkit.co/active_storage/sfx/1435/1435-84.wav");
+        const loseSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2958/2958-84.wav");
+
         const quizBank = {
             "know yourself": [
                 { q: "المشاعر هي:", options: ["أفكار منطقية عن الموقف", "استجابات جسدية ونفسية نمر بها تجاه موقف أو شخص", "قرارات نتخذها بإرادتنا", "حقائق علمية"], answer: "استجابات جسدية ونفسية نمر بها تجاه موقف أو شخص" },
@@ -212,10 +217,10 @@
             ],
             "رياضي": [
                 { q: "ما هو المنتخب الأكثر تتويجاً ببطولة كأس العالم؟", options: ["البرازيل", "ألمانيا", "الأرجنتين", "إيطاليا"], answer: "البرازيل" },
-                { q: "من هو اللاعب الأكثر تسجيلاً للأهداف في تاريخ كأس العالم؟", options: ["ميروسلاف كلوزه", "رونالدو البرازيلي", "ميسي", "بيليه"], answer: "ميروسلاف كلوزه" },
+                { q: "من هو اللاعب الأكثر تسجيلاً للأهداف في تاريخ كأس العالم？", options: ["ميروسلاف كلوزه", "رونالدو البرازيلي", "ميسي", "بيليه"], answer: "ميروسلاف كلوزه" },
                 { q: "كم عدد المنتخبات المشاركة في كأس العالم بداية من عام 2026؟", options: ["32 منتخب", "48 منتخب", "40 منتخب", "64 منتخب"], answer: "48 منتخب" },
                 { q: "ما هو النادي الأكثر فوزاً ببطولة دوري أبطال أوروبا؟", options: ["ريال مدريد", "ميلان", "ليفربول", "برشلونة"], answer: "ريال مدريد" },
-                { q: "من هو الهداف التاريخي لبطولة دوري أبطال أوروبا？", options: ["كريستيانو رونالدو", "ليونيل ميسي", "كريم بنزيما", "ليفاندوفسكي"], answer: "كريستيانو رونالدو" }
+                { q: "من هو الهداف التاريخي لبطولة دوري أبطال أوروبا؟", options: ["كريستيانو رونالدو", "ليونيل ميسي", "كريم بنزيما", "ليفاندوفسكي"], answer: "كريستيانو رونالدو" }
             ],
             "جغرافيا": [
                 { q: "ما هي أكبر دولة في العالم من حيث المساحة؟", options: ["روسيا", "كندا", "الصين", "أمريكا"], answer: "روسيا" },
@@ -226,7 +231,7 @@
             "معلومات تاريخية": [
                 { q: "ما هو الحدث الذي يُعد الشرارة الأولى لاندلاع الحرب العالمية الأولى؟", options: ["اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند", "غزو بولندا", "سقوط جدار برلين", "قنبلة هيروشيما"], answer: "اغتيال ولي عهد النمسا الأرشيدوق فرانز فرديناند" },
                 { q: "في أي عام سقط جدار برلين؟", options: ["1985", "1989", "1991", "1995"], answer: "1989" },
-                { q: "ما اسم الثورة التي أطاحت بحكم القياصرة في روسيا عام 1917？", options: ["الثورة الفرنسية", "الثورة البلشفية", "الثورة الصناعية", "الثورة المجيدة"], answer: "الثورة البلشفية" },
+                { q: "ما اسم الثورة التي أطاحت بحكم القياصرة في روسيا عام 1917؟", options: ["الثورة الفرنسية", "الثورة البلشفية", "الثورة الصناعية", "الثورة المجيدة"], answer: "الثورة البلشفية" },
                 { q: "من كان أول رئيس للولايات المتحدة الأمريكية؟", options: ["جورج واشنطن", "أبراهام لينكون", "توماس جيفرسون", "جون آدامز"], answer: "جورج واشنطن" },
                 { q: "ما هي المعركة التي انتهت بهزيمة نابليون بونابرت نهائياً عام 1815؟", options: ["معركة واترلو", "معركة ماراثون", "معركة ترالفالجار", "معركة ليبزيج"], answer: "معركة واترلو" }
             ],
@@ -292,51 +297,36 @@
         }
         drawWheel();
 
-        // دالة مبرمجة لعمل تأثير صوت تك تكة العجلة التفاعلي المدمج
-        function playTickSound() {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                oscillator.frequency.value = 600; 
-                oscillator.type = "triangle";
-                oscillator.start();
-                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-                oscillator.stop(audioCtx.currentTime + 0.05);
-            } catch(e) {}
-        }
-
         function spinWheel() {
             const btn = document.getElementById("spinBtn");
             btn.disabled = true;
 
+            // اختيار العشوائي المسبق
             const winningIndex = Math.floor(Math.random() * numSegments);
             
-            // التعديل السحري: الوقوف في منتصف الخانة تماماً (segmentAngle / 2) لإنهاء الوقوف بين قسمين
+            // معادلة السنتر بالملي: نقف في نص القوس بالضبط ونطرح الإزاحة لتجنب الوقوف على الفواصل
             const targetAngle = (numSegments - winningIndex) * segmentAngle - (segmentAngle / 2);
-            const extraSpins = 6 * 2 * Math.PI; 
+            const extraSpins = 8 * 2 * Math.PI; // 8 لفات كاملة للمتعة البصرية
             const totalTargetRotation = extraSpins + targetAngle;
 
             canvas.style.transform = `rotate(${totalTargetRotation}rad)`;
             
-            // تشغيل محاكي صوت تكة العجلة بطريقة ديناميكية تتوافق مع السرعة والتبطئة
+            // تشغيل تكة الصوت المتزامنة بشكل ديناميكي مذهل
             let duration = 4000;
             let start = performance.now();
-            let lastTickAngle = 0;
+            let lastTickProgress = 0;
             
             function runAudioTicks(now) {
                 let elapsed = now - start;
                 if (elapsed < duration) {
-                    // حساب السرعة الحالية التقريبية بناءً على العجلة
                     let progress = elapsed / duration;
-                    let currentAngle = totalTargetRotation * (1 - Math.pow(1 - progress, 3)); // محاكاة الـ cubic-bezier
+                    // كود لتسريع الصوت وبطئه بالتزامن مع حركة العجلة
+                    let currentAngleProgress = Math.floor((totalTargetRotation * (1 - Math.pow(1 - progress, 3))) / (segmentAngle / 2));
                     
-                    if (Math.abs(currentAngle - lastTickAngle) > (segmentAngle / 2)) {
-                        playTickSound();
-                        lastTickAngle = currentAngle;
+                    if (currentAngleProgress !== lastTickProgress) {
+                        tickSound.currentTime = 0;
+                        tickSound.play().catch(e => {}); // يتخطى حظر المتصفح لأن المستخدم داس فعلاً
+                        lastTickProgress = currentAngleProgress;
                     }
                     requestAnimationFrame(runAudioTicks);
                 }
@@ -405,12 +395,14 @@
                 selectedBtn.classList.add("correct");
                 feedback.innerText = "إجابة صحيحة! برافو عليك 🥳🎉";
                 feedback.style.color = "#21bf73";
-                playTone(523.25, 0.2); 
+                winSound.currentTime = 0;
+                winSound.play().catch(e=>{});
             } else {
                 selectedBtn.classList.add("wrong");
                 feedback.innerText = `إجابة خاطئة! ❌`;
                 feedback.style.color = "#ff4b5c";
-                playTone(150, 0.4); 
+                loseSound.currentTime = 0;
+                loseSound.play().catch(e=>{});
 
                 allButtons.forEach(btn => {
                     if (btn.innerText === correctOption) btn.classList.add("correct");
@@ -427,22 +419,6 @@
             setTimeout(() => {
                 canvas.style.transition = "transform 4s cubic-bezier(0.2, 0.8, 0.1, 1)";
             }, 50);
-        }
-
-        function playTone(freq, duration) {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                oscillator.frequency.value = freq;
-                oscillator.type = "sine";
-                oscillator.start();
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-                oscillator.stop(audioCtx.currentTime + duration);
-            } catch(e) {}
         }
     </script>
 </body>
