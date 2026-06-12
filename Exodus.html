@@ -38,7 +38,6 @@
             max-width: 600px;
         }
 
-        /* تصميم العجلة والمؤشر */
         .wheel-container {
             position: relative;
             margin: 30px auto;
@@ -92,7 +91,6 @@
             cursor: not-allowed;
         }
 
-        /* النوافذ المنبثقة للأسئلة */
         .modal {
             display: none;
             position: fixed;
@@ -153,7 +151,6 @@
             border-color: #00fff0;
         }
 
-        /* حالات الإجابة */
         .option-btn.correct {
             background-color: #21bf73 !important;
             border-color: #21bf73 !important;
@@ -190,7 +187,6 @@
         <button id="spinBtn" onclick="spinWheel()">لف العجلة! 🎡</button>
     </div>
 
-    <!-- نافذة الأسئلة المتغيرة -->
     <div id="quizModal" class="modal">
         <div class="modal-content">
             <div id="modalCategory" class="category-title"></div>
@@ -202,11 +198,9 @@
     </div>
 
     <script>
-        // الأقسام الستة والألوان
         const categories = ["رياضي", "know yourself", "الينور", "جغرافيا", "معلومات تاريخية", "ضربة حظ"];
         const colors = ["#ff007f", "#711c91", "#133e7c", "#0abf53", "#ff9f1c", "#00fff0"];
         
-        // بنك الأسئلة المدمج بالكامل
         const quizBank = {
             "know yourself": [
                 { q: "المشاعر هي:", options: ["أفكار منطقية عن الموقف", "استجابات جسدية ونفسية نمر بها تجاه موقف أو شخص", "قرارات نتخذها بإرادتنا", "حقائق علمية"], answer: "استجابات جسدية ونفسية نمر بها تجاه موقف أو شخص", type: "mcq" },
@@ -236,7 +230,7 @@
             ],
             "جغرافيا": [
                 { q: "ما هي أكبر دولة في العالم من حيث المساحة؟", options: ["روسيا", "كندا", "الصين", "أمريكا"], answer: "روسيا", type: "mcq" },
-                { q: "ما هو المحيط الأكبر في العالم؟", options: ["المحيط الهادئ", "المحيط الأطلسي", "المحيط الهندي", "المحيط المتجمد"], answer: "المحيط الهادئ", type: "mcq" },
+                { q: "ما هو المحيط الأكبر في العالم? ", options: ["المحيط الهادئ", "المحيط الأطلسي", "المحيط الهندي", "المحيط المتجمد"], answer: "المحيط الهادئ", type: "mcq" },
                 { q: "أي دولة يمر بها خط الاستواء وتضم أعلى قمة جبلية فيها؟", options: ["الإكوادور", "البرازيل", "كينيا", "إندونيسيا"], answer: "الإكوادور", type: "mcq" },
                 { q: "كم عدد قارات العالم؟", options: ["5 قارات", "6 قارات", "7 قارات", "8 قارات"], answer: "7 قارات", type: "mcq" }
             ],
@@ -278,7 +272,6 @@
             ]
         };
 
-        // إعداد لوحة الرسم (Canvas) للعجلة
         const canvas = document.getElementById("wheel");
         const ctx = canvas.getContext("2d");
         const numSegments = categories.length;
@@ -296,7 +289,6 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // إضافة نصوص الأقسام داخل العجلة
                 ctx.save();
                 ctx.translate(180, 180);
                 ctx.rotate(i * segmentAngle + segmentAngle / 2);
@@ -309,7 +301,6 @@
         }
         drawWheel();
 
-        // منطق الدوران والـ Logic التفاعلي
         function spinWheel() {
             const btn = document.getElementById("spinBtn");
             btn.disabled = true;
@@ -321,10 +312,8 @@
             canvas.style.transform = `rotate(${totalTargetRotation}rad)`;
             currentRotation = totalTargetRotation;
 
-            // حساب القسم الفائز بدقة بناءً على زاوية الوقوف والمؤشر العلوي
             setTimeout(() => {
                 const normalizedAngle = (2 * Math.PI - (totalTargetRotation % (2 * Math.PI))) % (2 * Math.PI);
-                // تعديل زاوية المؤشر العلوي (بمقدار 90 درجة أو 1.57 راديان)
                 const pointerCorrectedAngle = (normalizedAngle + Math.PI / 2) % (2 * Math.PI);
                 const winningIndex = Math.floor(pointerCorrectedAngle / segmentAngle);
                 
@@ -333,7 +322,6 @@
             }, 4000); 
         }
 
-        // فتح السؤال بناء على القسم الفائز
         function openQuiz(category) {
             const modal = document.getElementById("quizModal");
             const catTitle = document.getElementById("modalCategory");
@@ -355,19 +343,16 @@
                 return;
             }
 
-            // سحب سؤال عشوائي من القسم المتوقف عليه
             const randomIndex = Math.floor(Math.random() * questions.length);
             const questionObj = questions[randomIndex];
 
             qText.innerText = questionObj.q;
 
-            // لو القسم "ضربة حظ" بيظهر كـ تحدي بدون زراير إجابة
             if (category === "ضربة حظ") {
                 feedback.innerText = "نفذ التحدي المطلوب واضغط عودة للعب مجدداً!";
                 feedback.style.color = "#00fff0";
                 nextBtn.style.display = "block";
             } else {
-                // توليد أزرار الاختيارات للأسئلة العادية (اختيار من متعدد وصح وغلط)
                 questionObj.options.forEach(opt => {
                     const button = document.createElement("button");
                     button.classList.add("option-btn");
@@ -380,27 +365,24 @@
             modal.style.display = "flex";
         }
 
-        // التحقق من صحة الإجابة وتلوين الزراير
         function checkAnswer(selectedBtn, selectedOption, correctOption, feedbackMsg) {
             const allButtons = document.querySelectorAll(".option-btn");
             const feedback = document.getElementById("modalFeedback");
             const nextBtn = document.getElementById("nextBtn");
 
-            // تجميد الأزرار بعد الاختيار
             allButtons.forEach(btn => btn.disabled = true);
 
             if (selectedOption === correctOption) {
                 selectedBtn.classList.add("correct");
                 feedback.innerText = "إجابة صحيحة! برافو عيك 🥳🎉";
                 feedback.style.color = "#21bf73";
-                playTone(523.25, 0.2); // نغمة الفوز
+                playTone(523.25, 0.2); 
             } else {
                 selectedBtn.classList.add("wrong");
                 feedback.innerText = `إجابة خاطئة! ❌`;
                 feedback.style.color = "#ff4b5c";
-                playTone(150, 0.4); // نغمة الخطأ
+                playTone(150, 0.4); 
 
-                // إظهار الإجابة الصح
                 allButtons.forEach(btn => {
                     if (btn.innerText === correctOption) btn.classList.add("correct");
                 });
@@ -417,7 +399,6 @@
             document.getElementById("quizModal").style.display = "none";
         }
 
-        // تأثير صوتي مدمج بدون ملفات خارجية باستخدام الـ Web Audio API
         function playTone(freq, duration) {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioCtx.createOscillator();
