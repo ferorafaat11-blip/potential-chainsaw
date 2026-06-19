@@ -355,14 +355,6 @@ function doCreate(){
   socket.emit('create-room',{name:n,mediaList:ml,audioList:al});
 }
 
-socket.on('open-ok', function(d){
-  isOp=d.open;
-  var btn=document.getElementById('openBtn');
-  btn.textContent=isOp?'✅ مفتوح':'⛔ مغلق';
-  btn.className=isOp?'btn b-on':'btn b-off';
-  log(isOp?'✅ مفتوح':'⛔ مغلق');
-});
-
 socket.on('disconnect', function(){ log('❌ انقطع الاتصال'); });
 
 // ─── VIEWERS ───
@@ -381,14 +373,13 @@ socket.on('vlist', function(list){
 
 // ─── ROOM MODAL ───
 function showModal(){
-  var url=window.location.origin+'/index.html#'+roomId;
+  var url=window.location.origin+'/';
   document.getElementById('shareUrl').textContent=url;
   document.getElementById('shareModal').classList.add('show');
 }
 function closeModal(){ document.getElementById('shareModal').classList.remove('show'); }
 function copyUrl(){
-  var url=window.location.origin+'/index.html#'+roomId;
-  navigator.clipboard.writeText(url).then(function(){log('✅ تم نسخ الرابط');}).catch(function(){});
+  navigator.clipboard.writeText(window.location.origin+'/').then(function(){log('✅ تم نسخ الرابط');}).catch(function(){});
   closeModal();
 }
 function deleteRoom(){
